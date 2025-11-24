@@ -10,14 +10,26 @@ import Card from '../components/Card'
 export default function Dashboard() {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [lastUpdate, setLastUpdate] = useState(null)
 
   useEffect(() => {
     const loadData = async () => {
       const result = await fetchData()
       setData(result)
       setLoading(false)
+      setLastUpdate(new Date())
     }
+    
+    // Carrega dados imediatamente
     loadData()
+    
+    // Atualiza dados a cada 30 segundos
+    const interval = setInterval(() => {
+      loadData()
+    }, 30000) // 30 segundos
+    
+    // Limpa o intervalo quando o componente desmonta
+    return () => clearInterval(interval)
   }, [])
 
   if (loading) {

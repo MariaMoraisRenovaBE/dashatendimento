@@ -1,6 +1,16 @@
 import { Outlet } from 'react-router-dom'
+import { useState, useEffect } from 'react'
 
 export default function MainLayout() {
+  const [currentTime, setCurrentTime] = useState(new Date())
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date())
+    }, 1000)
+    return () => clearInterval(timer)
+  }, [])
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/20 to-indigo-50/30">
       {/* Header */}
@@ -20,6 +30,12 @@ export default function MainLayout() {
                 <div className="w-2.5 h-2.5 bg-green-500 rounded-full animate-pulse shadow-lg shadow-green-500/50"></div>
                 <span className="text-sm font-semibold text-gray-700">Sistema Online</span>
               </div>
+              <div className="hidden md:flex items-center space-x-2 text-xs text-gray-500">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                <span>Atualiza a cada 30s</span>
+              </div>
             </div>
           </div>
         </div>
@@ -38,7 +54,7 @@ export default function MainLayout() {
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              Dashboard atualizado em tempo real
+              Dashboard atualizado automaticamente a cada 30 segundos
             </p>
             <p className="text-xs">© {new Date().getFullYear()} Dashboard de Protocolos</p>
           </div>
