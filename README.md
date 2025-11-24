@@ -44,28 +44,36 @@ O arquivo `netlify.toml` já está configurado.
 
 ## 📊 Dados
 
-Por padrão, o dashboard usa **dados mock** localizados em `src/data/protocolos.js`.
+O dashboard consome dados diretamente da **API Laravel**:
 
-### Para usar API real:
+**Endpoint:** `GET https://phpstack-1358125-6012593.cloudwaysapps.com/api/dashboard/protocolos`
 
-1. Configure a variável de ambiente no Netlify:
-   - `VITE_API_URL` = `https://sua-api.com`
+### Formato da Resposta da API:
 
-2. O dashboard automaticamente buscará dados da API se `VITE_API_URL` estiver configurado.
+```json
+{
+  "total": 100,
+  "bot": 60,
+  "humano": 40,
+  "percent_bot": 60.0,
+  "percent_humano": 40.0,
+  "status": [
+    { "status": "aberto", "total": 20 },
+    { "status": "em_atendimento", "total": 30 },
+    { "status": "resolvido", "total": 50 }
+  ],
+  "canais": [
+    { "canal": "whatsapp", "total": 70 },
+    { "canal": "webchat", "total": 30 }
+  ],
+  "tempo_medio_bot": 120.5,
+  "tempo_medio_humano": 300.2
+}
+```
 
-3. Formato esperado da API:
-   - `GET /api/protocolos/kpis`
-   - `GET /api/protocolos/graficos`
-   - `GET /api/protocolos/tempos`
+### Atualização Automática
 
-## ✅ Validação dos Dados
-
-Os dados mock foram ajustados para valores realistas:
-- **Total:** ~2.600 protocolos
-- **Bot:** ~1.980 (76%)
-- **Humano:** ~620 (24%)
-
-**Importante:** Os números são calculados corretamente, sem duplicações ou acumulações.
+O dashboard atualiza os dados automaticamente a cada **30 segundos**.
 
 ## 📁 Estrutura
 

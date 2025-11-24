@@ -1,34 +1,37 @@
 import { useState, useEffect } from 'react'
-import { fetchData } from '../data/protocolos'
+import { getDashboardData } from '../services/api'
+import { formatSeconds, formatSecondsToTime, secondsToMinutes } from '../utils/formatters'
 import StatBox from '../components/StatBox'
 import DonutComparison from '../components/DonutComparison'
 import BarChart from '../components/BarChart'
 import LineChart from '../components/LineChart'
 import ProgressBar from '../components/ProgressBar'
-import Card from '../components/Card'
 
 export default function Dashboard() {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [lastUpdate, setLastUpdate] = useState(null)
+  const [error, setError] = useState(null)
 
   useEffect(() => {
-    const loadData = async () => {
-      const result = await fetchData()
-      setData(result)
-      setLoading(false)
-      setLastUpdate(new Date())
+    async function loadData() {
+      try {
+        const apiData = await getDashboardData()
+        setData(apiData)
+        setLoading(false)
+        setError(null)
+      } catch (err) {
+        console.error('Erro ao carregar dados:', err)
+        setError('Erro ao carregar dados do dashboard')
+        setLoading(false)
+      }
     }
-    
+
     // Carrega dados imediatamente
     loadData()
-    
+
     // Atualiza dados a cada 30 segundos
-    const interval = setInterval(() => {
-      loadData()
-    }, 30000) // 30 segundos
-    
-    // Limpa o intervalo quando o componente desmonta
+    const interval = setInterval(loadData, 30000)
+
     return () => clearInterval(interval)
   }, [])
 
@@ -38,6 +41,30 @@ export default function Dashboard() {
         <div className="text-center">
           <div className="inline-block animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-600 mb-4"></div>
           <p className="text-gray-600 text-lg font-medium">Carregando dashboard...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="bg-red-50 border border-red-200 rounded-xl p-8 max-w-md">
+          <div className="flex items-center justify-center mb-4">
+            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center">
+              <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+          </div>
+          <h2 className="text-2xl font-bold text-gray-800 mb-2 text-center">Erro ao Carregar</h2>
+          <p className="text-gray-600 text-center mb-4">{error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
+          >
+            Tentar Novamente
+          </button>
         </div>
       </div>
     )
@@ -65,6 +92,7 @@ export default function Dashboard() {
 
   const canalLabels = {
     site: 'Site',
+    webchat: 'Webchat',
     telefone: 'Telefone',
     whatsapp: 'WhatsApp',
     email: 'Email',
@@ -76,30 +104,13 @@ export default function Dashboard() {
   }
 
   // Preparar dados para gráficos
-  const statusChartData = Object.entries(data.status).map(([key, value]) => ({
-    label: statusLabels[key] || key,
-    value: value
-  }))
+  const statusChartData = data.status || []
+  const canalChartData = data.canais || []
 
-  const canalChartData = Object.entries(data.canal).map(([key, value]) => ({
-    label: canalLabels[key] || key,
-    value: value
-  }))
-
-  // Últimos 7 dias para mini-gráfico
-  const ultimos7Dias = data.evolucaoDiaria.slice(-7)
-  const trendLabels = ultimos7Dias.map(item => {
-    const date = new Date(item.data)
-    return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
-  })
-  const trendData = ultimos7Dias.map(item => parseFloat(item.tempo_medio_humano_minutos) || 0)
-
-  // Evolução completa (30 dias)
-  const evolucaoLabels = data.evolucaoDiaria.map(item => {
-    const date = new Date(item.data)
-    return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
-  })
-  const evolucaoData = data.evolucaoDiaria.map(item => parseFloat(item.tempo_medio_humano_minutos) || 0)
+  // Formatar tempo médio humano
+  const tempoHumanoSegundos = data.tempo_medio_humano || 0
+  const tempoHumanoFormato = formatSecondsToTime(tempoHumanoSegundos)
+  const tempoHumanoMinutos = secondsToMinutes(tempoHumanoSegundos)
 
   return (
     <div className="space-y-10">
@@ -115,7 +126,7 @@ export default function Dashboard() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           <StatBox
             title="Total de Protocolos"
-            value={data.total.toLocaleString('pt-BR')}
+            value={data.total?.toLocaleString('pt-BR') || '0'}
             subtitle="Registros totais"
             color="blue"
             icon={
@@ -126,8 +137,8 @@ export default function Dashboard() {
           />
           <StatBox
             title="Atendimento Bot"
-            value={data.tipoAtendimento.bot.toLocaleString('pt-BR')}
-            subtitle={`${((data.tipoAtendimento.bot / data.total) * 100).toFixed(1)}% do total`}
+            value={data.bot?.toLocaleString('pt-BR') || '0'}
+            subtitle={`${data.percent_bot?.toFixed(1) || 0}% do total`}
             color="purple"
             icon={
               <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -137,8 +148,8 @@ export default function Dashboard() {
           />
           <StatBox
             title="Atendimento Humano"
-            value={data.tipoAtendimento.humano.toLocaleString('pt-BR')}
-            subtitle={`${((data.tipoAtendimento.humano / data.total) * 100).toFixed(1)}% do total`}
+            value={data.humano?.toLocaleString('pt-BR') || '0'}
+            subtitle={`${data.percent_humano?.toFixed(1) || 0}% do total`}
             color="green"
             icon={
               <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -148,7 +159,7 @@ export default function Dashboard() {
           />
           <StatBox
             title="Canais Ativos"
-            value={Object.keys(data.canal).length}
+            value={(data.canais?.length || 0).toString()}
             subtitle="Canais diferentes"
             color="cyan"
             icon={
@@ -181,7 +192,7 @@ export default function Dashboard() {
                 <div className="mb-6">
                   <p className="text-sm font-semibold text-gray-600 uppercase tracking-wider mb-3">Tempo Médio</p>
                   <p className="text-7xl md:text-8xl font-extrabold text-green-600 mb-2 leading-none" style={{ fontFamily: 'Inter, sans-serif' }}>
-                    {data.tempoMedio.humano.formato}
+                    {tempoHumanoFormato}
                   </p>
                   <p className="text-base text-gray-500">Formato HH:mm:ss</p>
                 </div>
@@ -189,29 +200,26 @@ export default function Dashboard() {
                 <div className="grid grid-cols-2 gap-4 mb-6">
                   <div className="bg-white/60 backdrop-blur-sm rounded-xl p-5 border border-green-100">
                     <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Em minutos</p>
-                    <p className="text-3xl font-bold text-gray-900">{parseFloat(data.tempoMedio.humano.minutos).toFixed(2)}</p>
+                    <p className="text-3xl font-bold text-gray-900">{tempoHumanoMinutos}</p>
                     <p className="text-xs text-gray-500 mt-1">minutos</p>
                   </div>
                   <div className="bg-white/60 backdrop-blur-sm rounded-xl p-5 border border-green-100">
                     <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Total de registros</p>
-                    <p className="text-3xl font-bold text-gray-900">{data.tempoMedio.humano.total.toLocaleString('pt-BR')}</p>
+                    <p className="text-3xl font-bold text-gray-900">{data.humano?.toLocaleString('pt-BR') || '0'}</p>
                     <p className="text-xs text-gray-500 mt-1">protocolos</p>
                   </div>
                 </div>
               </div>
 
-              {/* Mini Gráfico de Tendência */}
+              {/* Mini Gráfico de Tendência - Removido por enquanto pois API não retorna evolução diária */}
               <div className="lg:col-span-1">
                 <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 border border-green-100 shadow-lg">
                   <div className="mb-4">
-                    <p className="text-sm font-semibold text-gray-700 mb-1">Tendência (7 dias)</p>
-                    <p className="text-xs text-gray-500">Evolução do tempo médio</p>
+                    <p className="text-sm font-semibold text-gray-700 mb-1">Tempo Médio</p>
+                    <p className="text-xs text-gray-500">Formato simplificado</p>
                   </div>
-                  <div className="h-32">
-                    <LineChart 
-                      data={trendData} 
-                      labels={trendLabels}
-                    />
+                  <div className="h-32 flex items-center justify-center">
+                    <p className="text-4xl font-bold text-green-600">{formatSeconds(tempoHumanoSegundos)}</p>
                   </div>
                 </div>
               </div>
@@ -230,9 +238,9 @@ export default function Dashboard() {
           <p className="text-gray-500 text-sm mt-1 ml-4">Distribuição percentual de atendimentos</p>
         </div>
         <DonutComparison 
-          bot={data.tipoAtendimento.bot}
-          humano={data.tipoAtendimento.humano}
-          total={data.total}
+          bot={data.bot || 0}
+          humano={data.humano || 0}
+          total={data.total || 0}
         />
       </section>
 
@@ -246,7 +254,9 @@ export default function Dashboard() {
           <p className="text-gray-500 text-sm mt-1 ml-4">Distribuição por status atual</p>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          {Object.entries(data.status).map(([key, value]) => {
+          {statusChartData.map((item) => {
+            const statusKey = item.status
+            const value = item.total || 0
             const percentage = data.total > 0 ? ((value / data.total) * 100).toFixed(1) : 0
             const colorMap = {
               aberto: { bg: 'from-blue-50 to-blue-100/50', border: 'border-blue-200', bar: 'blue', text: 'text-blue-700' },
@@ -256,12 +266,12 @@ export default function Dashboard() {
               fechado: { bg: 'from-gray-50 to-gray-100/50', border: 'border-gray-200', bar: 'gray', text: 'text-gray-700' },
               cancelado: { bg: 'from-red-50 to-red-100/50', border: 'border-red-200', bar: 'red', text: 'text-red-700' }
             }
-            const colors = colorMap[key] || colorMap.fechado
+            const colors = colorMap[statusKey] || colorMap.fechado
             return (
-              <div key={key} className={`bg-gradient-to-br ${colors.bg} rounded-2xl p-5 border ${colors.border} shadow-md hover:shadow-lg transition-all duration-300 group hover:-translate-y-1`}>
+              <div key={statusKey} className={`bg-gradient-to-br ${colors.bg} rounded-2xl p-5 border ${colors.border} shadow-md hover:shadow-lg transition-all duration-300 group hover:-translate-y-1`}>
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex-1">
-                    <p className="text-sm font-semibold text-gray-700 mb-2">{statusLabels[key] || key}</p>
+                    <p className="text-sm font-semibold text-gray-700 mb-2">{statusLabels[statusKey] || statusKey}</p>
                     <p className="text-3xl font-extrabold text-gray-900 mb-1">{value.toLocaleString('pt-BR')}</p>
                   </div>
                   <div className="text-right">
@@ -287,11 +297,11 @@ export default function Dashboard() {
           <p className="text-gray-500 text-sm mt-1 ml-4">Visualizações interativas e detalhadas</p>
         </div>
         
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <BarChart
             title="Quantidade por Status"
-            labels={statusChartData.map(item => item.label)}
-            data={statusChartData.map(item => item.value)}
+            labels={statusChartData.map(item => statusLabels[item.status] || item.status)}
+            data={statusChartData.map(item => item.total || 0)}
             colors={[
               'rgba(59, 130, 246, 0.8)',
               'rgba(234, 179, 8, 0.8)',
@@ -303,18 +313,11 @@ export default function Dashboard() {
           />
           <BarChart
             title="Distribuição por Canal"
-            labels={canalChartData.map(item => item.label)}
-            data={canalChartData.map(item => item.value)}
+            labels={canalChartData.map(item => canalLabels[item.canal] || item.canal)}
+            data={canalChartData.map(item => item.total || 0)}
           />
         </div>
-
-        <LineChart
-          title="Evolução do Tempo Médio Humano (Últimos 30 dias)"
-          labels={evolucaoLabels}
-          data={evolucaoData}
-        />
       </section>
     </div>
   )
 }
-
