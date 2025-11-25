@@ -26,13 +26,7 @@ export default function Dashboard() {
       }
     }
 
-    // Carrega dados imediatamente
     loadData()
-
-    // Atualiza dados a cada 30 segundos
-    const interval = setInterval(loadData, 30000)
-
-    return () => clearInterval(interval)
   }, [])
 
   if (loading) {

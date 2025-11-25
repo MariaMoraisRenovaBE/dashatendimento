@@ -71,9 +71,6 @@ O dashboard consome dados diretamente da **API Laravel**:
 }
 ```
 
-### Atualização Automática
-
-O dashboard atualiza os dados automaticamente a cada **30 segundos**.
 
 ## 📁 Estrutura
 
