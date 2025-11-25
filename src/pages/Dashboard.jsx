@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { fetchData } from '../data/protocolos'
+import { useProtocolos } from '../hooks/useProtocolos'
 import { formatSeconds, formatSecondsToTime, secondsToMinutes } from '../utils/formatters'
 import StatBox from '../components/StatBox'
 import DonutComparison from '../components/DonutComparison'
@@ -8,25 +8,38 @@ import LineChart from '../components/LineChart'
 import ProgressBar from '../components/ProgressBar'
 
 export default function Dashboard() {
-  const [data, setData] = useState(null)
-  const [loading, setLoading] = useState(true)
+  const { data, loading, error } = useProtocolos(15000)
 
-  useEffect(() => {
-    const loadData = async () => {
-      const result = await fetchData()
-      setData(result)
-      setLoading(false)
-    }
-
-    loadData()
-  }, [])
-
-  if (loading) {
+  if (loading && !data) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-center">
           <div className="inline-block animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-600 mb-4"></div>
           <p className="text-gray-600 text-lg font-medium">Carregando dashboard...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error && !data) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="bg-red-50 border border-red-200 rounded-xl p-8 max-w-md">
+          <div className="flex items-center justify-center mb-4">
+            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center">
+              <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+          </div>
+          <h2 className="text-2xl font-bold text-gray-800 mb-2 text-center">Erro ao Carregar</h2>
+          <p className="text-gray-600 text-center mb-4">{error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
+          >
+            Tentar Novamente
+          </button>
         </div>
       </div>
     )
@@ -69,13 +82,40 @@ export default function Dashboard() {
   const statusChartData = data.status || []
   const canalChartData = data.canais || []
 
-  // Formatar tempo médio humano
-  const tempoHumanoSegundos = data.tempo_medio_humano || 0
+  // Formatar tempo médio humano (a API pode retornar número em segundos ou string HH:MM:SS)
+  const rawTempoHumano =
+    data.tempo_medio_humano_segundos ?? data.tempo_medio_humano ?? 0
+
+  let tempoHumanoSegundos = 0
+  if (typeof rawTempoHumano === 'number') {
+    tempoHumanoSegundos = rawTempoHumano
+  } else if (typeof rawTempoHumano === 'string') {
+    if (rawTempoHumano.includes(':')) {
+      const parts = rawTempoHumano.split(':').map(p => parseFloat(p.replace(',', '.')) || 0)
+      const [h = 0, m = 0, s = 0] = parts
+      tempoHumanoSegundos = h * 3600 + m * 60 + s
+    } else {
+      tempoHumanoSegundos = parseFloat(rawTempoHumano.toString().replace(',', '.')) || 0
+    }
+  }
+
   const tempoHumanoFormato = formatSecondsToTime(tempoHumanoSegundos)
   const tempoHumanoMinutos = secondsToMinutes(tempoHumanoSegundos)
 
   return (
     <div className="space-y-10">
+      {/* Aviso discreto de erro quando já temos dados mas a API falhou em atualizar */}
+      {error && (
+        <div className="mb-4 max-w-3xl mx-auto">
+          <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-sm">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M12 5a7 7 0 100 14 7 7 0 000-14z" />
+            </svg>
+            <span>Não foi possível atualizar os dados agora. Exibindo última leitura bem-sucedida.</span>
+          </div>
+        </div>
+      )}
+
       {/* KPIs Principais */}
       <section className="animate-fade-in">
         <div className="mb-6">
