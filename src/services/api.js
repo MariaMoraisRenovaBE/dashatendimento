@@ -1,8 +1,8 @@
+const API_URL = import.meta.env.VITE_API_URL;
+
 export async function getDashboardData() {
-  const response = await fetch("https://phpstack-1358125-6012593.cloudwaysapps.com/api/dashboard/protocolos");
-  if (!response.ok) {
-    throw new Error(`HTTP error! status: ${response.status}`);
-  }
-  return await response.json();
+  const res = await fetch(API_URL);
+  if (!res.ok) throw new Error("Erro ao carregar API");
+  return res.json();
 }
 
