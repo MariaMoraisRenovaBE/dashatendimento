@@ -4,28 +4,28 @@ export async function fetchData() {
   await new Promise(resolve => setTimeout(resolve, 500));
   
   return {
-    total: 2600,
-    bot: 1560,
-    humano: 1040,
-    percent_bot: 60.0,
-    percent_humano: 40.0,
+    // Números reais do banco (atualizados)
+    total: 7020,
+    bot: 6065,
+    humano: 955,
+    percent_bot: (6065 / 7020) * 100,
+    percent_humano: (955 / 7020) * 100,
     status: [
-      { status: "aberto", total: 320 },
-      { status: "em_atendimento", total: 450 },
-      { status: "pendente_cliente", total: 180 },
-      { status: "resolvido", total: 1200 },
-      { status: "fechado", total: 350 },
-      { status: "cancelado", total: 100 }
+      { status: "aberto", total: 6064 },
+      { status: "resolvido", total: 549 },
+      { status: "em_atendimento", total: 409 }
     ],
     canais: [
-      { canal: "whatsapp", total: 1100 },
-      { canal: "webchat", total: 750 },
-      { canal: "telefone", total: 400 },
-      { canal: "email", total: 250 },
-      { canal: "site", total: 100 }
+      { canal: "site", total: 2 },
+      { canal: "whatsapp", total: 5967 },
+      { canal: "messenger", total: 3 },
+      { canal: "instagram", total: 961 },
+      { canal: "webchat", total: 116 },
+      { canal: "tiktok", total: 3 }
     ],
-    tempo_medio_bot: 120.5,
-    tempo_medio_humano: 1850.3
+    // Deixando tempo médio bot sem dado real por enquanto
+    tempo_medio_bot: 0,
+    tempo_medio_humano: 175.2441
   };
 }
 
