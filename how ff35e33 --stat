@@ -1,0 +1,41 @@
+[33mcommit 724d1531928a2868caf895edf434e61b945fd04f[m
+Author: Maria Morais <maria.morais@vitabe.com.br>
+Date:   Mon Nov 24 16:04:02 2025 -0300
+
+    Corrige dados mock para valores realistas (~2.600 protocolos) e remove backend
+
+ .gitignore                                        |  11 [32m+[m[31m-[m
+ GITHUB_SETUP.md                                   |  48 [32m++++[m
+ PUSH_GITHUB.bat                                   |  18 [32m++[m
+ README.md                                         | 312 [32m++++[m[31m------------------[m
+ backend/config.example.js                         |  13 [31m-[m
+ backend/package.json                              |  21 [31m--[m
+ backend/server.js                                 | 261 [31m------------------[m
+ frontend/src/App.jsx                              |  57 [31m----[m
+ frontend/src/components/Dashboard.jsx             | 224 [31m----------------[m
+ frontend/src/components/Graficos.jsx              | 289 [31m--------------------[m
+ frontend/src/components/KPICards.jsx              | 174 [31m------------[m
+ frontend/src/components/LoadingSpinner.jsx        |  11 [31m-[m
+ frontend/src/components/TemposMedios.jsx          | 124 [31m---------[m
+ frontend/src/components/VisaoRapida.jsx           | 152 [31m-----------[m
+ frontend/src/index.css                            | 120 [31m---------[m
+ frontend/vite.config.js                           |  16 [31m--[m
+ frontend/index.html => index.html                 |   0
+ frontend/netlify.toml => netlify.toml             |   0
+ frontend/package.json => package.json             |   6 [32m+[m[31m-[m
+ frontend/postcss.config.js => postcss.config.js   |   0
+ src/App.jsx                                       |  16 [32m++[m
+ src/components/BarChart.jsx                       |  98 [32m+++++++[m
+ src/components/Card.jsx                           |   8 [32m+[m
+ src/components/DonutComparison.jsx                | 107 [32m++++++++[m
+ src/components/LineChart.jsx                      | 108 [32m++++++++[m
+ src/components/ProgressBar.jsx                    |  21 [32m++[m
+ src/components/StatBox.jsx                        |  38 [32m+++[m
+ src/data/protocolos.js                            | 114 [32m++++++++[m
+ src/index.css                                     |  27 [32m++[m
+ src/layouts/MainLayout.jsx                        |  50 [32m++++[m
+ {frontend/src => src}/main.jsx                    |   5 [32m+[m[31m-[m
+ src/pages/Dashboard.jsx                           | 308 [32m+++++++++++++++++++++[m
+ frontend/tailwind.config.js => tailwind.config.js |  27 [32m+[m[31m-[m
+ vite.config.js                                    |  12 [32m+[m
+ 34 files changed, 1051 insertions(+), 1745 deletions(-)

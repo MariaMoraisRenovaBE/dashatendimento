@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { getDashboardData } from '../services/api'
+import { fetchData } from '../data/protocolos'
 import { formatSeconds, formatSecondsToTime, secondsToMinutes } from '../utils/formatters'
 import StatBox from '../components/StatBox'
 import DonutComparison from '../components/DonutComparison'
@@ -10,22 +10,13 @@ import ProgressBar from '../components/ProgressBar'
 export default function Dashboard() {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
 
   useEffect(() => {
-    async function loadData() {
-      try {
-        const apiData = await getDashboardData()
-        setData(apiData)
-        setLoading(false)
-        setError(null)
-      } catch (err) {
-        console.error('Erro ao carregar dados:', err)
-        setError('Erro ao carregar dados do dashboard')
-        setLoading(false)
-      }
+    const loadData = async () => {
+      const result = await fetchData()
+      setData(result)
+      setLoading(false)
     }
-
     loadData()
   }, [])
 
@@ -35,30 +26,6 @@ export default function Dashboard() {
         <div className="text-center">
           <div className="inline-block animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-600 mb-4"></div>
           <p className="text-gray-600 text-lg font-medium">Carregando dashboard...</p>
-        </div>
-      </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="bg-red-50 border border-red-200 rounded-xl p-8 max-w-md">
-          <div className="flex items-center justify-center mb-4">
-            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center">
-              <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-          </div>
-          <h2 className="text-2xl font-bold text-gray-800 mb-2 text-center">Erro ao Carregar</h2>
-          <p className="text-gray-600 text-center mb-4">{error}</p>
-          <button
-            onClick={() => window.location.reload()}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
-          >
-            Tentar Novamente
-          </button>
         </div>
       </div>
     )
