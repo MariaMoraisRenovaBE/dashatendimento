@@ -16,17 +16,25 @@ export default function Dashboard() {
     error: errorPorDia
   } = useProtocolosPorDia(60000)
 
-  // Processamento de atendimentos por dia (a partir do dia 20 de cada mês)
+  // Processamento de atendimentos por dia (a partir da data de início do projeto)
   let diasPorDia = []
   if (dadosPorDia && Array.isArray(dadosPorDia)) {
+    // Data de início do projeto (20/11/2025) em horário local
+    const dataInicioProjeto = new Date(2025, 10, 20) // mês 10 = novembro
+
     diasPorDia = dadosPorDia
-      .map((d) => ({
-        ...d,
-        _diaDate: new Date(d.dia)
-      }))
+      .map((d) => {
+        // Converte "2025-11-26" para Date local sem mudar o dia
+        const [ano, mes, dia] = d.dia.split('-').map(Number)
+        const dateLocal = new Date(ano, (mes || 1) - 1, dia || 1)
+        return {
+          ...d,
+          _diaDate: dateLocal
+        }
+      })
       .sort((a, b) => a._diaDate - b._diaDate)
-      // Mantém apenas os dias a partir do dia 20 (data de início do projeto)
-      .filter((d) => d._diaDate.getDate() >= 20)
+      // Mantém apenas os dias a partir da data de início do projeto
+      .filter((d) => d._diaDate >= dataInicioProjeto)
   }
 
   if (loading && !data) {
@@ -225,10 +233,12 @@ export default function Dashboard() {
               <div className="lg:col-span-2">
                 <div className="mb-6">
                   <p className="text-sm font-semibold text-gray-600 uppercase tracking-wider mb-3">Tempo Médio</p>
-                  <p className="text-7xl md:text-8xl font-extrabold text-green-600 mb-2 leading-none" style={{ fontFamily: 'Inter, sans-serif' }}>
+                  <p
+                    className="text-7xl md:text-8xl font-extrabold text-green-600 mb-2 leading-none"
+                    style={{ fontFamily: 'Inter, sans-serif' }}
+                  >
                     {tempoHumanoFormato}
                   </p>
-                  <p className="text-base text-gray-500">Formato HH:mm:ss</p>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4 mb-6">
@@ -250,7 +260,6 @@ export default function Dashboard() {
                 <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 border border-green-100 shadow-lg">
                   <div className="mb-4">
                     <p className="text-sm font-semibold text-gray-700 mb-1">Tempo Médio</p>
-                    <p className="text-xs text-gray-500">Formato simplificado</p>
                   </div>
                   <div className="h-32 flex items-center justify-center">
                     <p className="text-4xl font-bold text-green-600">{formatSeconds(tempoHumanoSegundos)}</p>
