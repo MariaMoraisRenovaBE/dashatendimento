@@ -78,9 +78,22 @@ export default function Dashboard() {
     googlebm: 'Google Business'
   }
 
-  // Preparar dados para gráficos
-  const statusChartData = data.status || []
+  // Preparar dados para gráficos com dados exatos da API
+  const ultimosProtocolos = data.ultimos || []
+  const statusChartData = Array.isArray(data.status) ? data.status : []
   const canalChartData = data.canais || []
+
+  // KPIs auxiliares
+  const totalProtocolos = data.total || 0
+  const totalBot = data.bot || 0
+  const totalHumano = data.humano || 0
+
+  const percentBot = totalProtocolos ? (totalBot / totalProtocolos) * 100 : 0
+  const percentHumano = totalProtocolos ? (totalHumano / totalProtocolos) * 100 : 0
+
+  // Canais auxiliares
+  const canaisOrdenados = [...canalChartData].sort((a, b) => (b.total || 0) - (a.total || 0))
+  const canalTop = canaisOrdenados[0] || null
 
   // Formatar tempo médio humano (a API pode retornar número em segundos ou string HH:MM:SS)
   const rawTempoHumano =
@@ -139,8 +152,8 @@ export default function Dashboard() {
           />
           <StatBox
             title="Atendimento Bot"
-            value={data.bot?.toLocaleString('pt-BR') || '0'}
-            subtitle={`${data.percent_bot?.toFixed(1) || 0}% do total`}
+            value={totalBot.toLocaleString('pt-BR')}
+            subtitle={`${percentBot.toFixed(1)}% do total`}
             color="purple"
             icon={
               <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -150,8 +163,8 @@ export default function Dashboard() {
           />
           <StatBox
             title="Atendimento Humano"
-            value={data.humano?.toLocaleString('pt-BR') || '0'}
-            subtitle={`${data.percent_humano?.toFixed(1) || 0}% do total`}
+            value={totalHumano.toLocaleString('pt-BR')}
+            subtitle={`${percentHumano.toFixed(1)}% do total`}
             color="green"
             icon={
               <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -162,7 +175,7 @@ export default function Dashboard() {
           <StatBox
             title="Canais Ativos"
             value={(data.canais?.length || 0).toString()}
-            subtitle="Canais diferentes"
+            subtitle={canalTop ? `Maior canal: ${canalLabels[canalTop.canal] || canalTop.canal}` : 'Canais diferentes'}
             color="cyan"
             icon={
               <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -320,6 +333,86 @@ export default function Dashboard() {
           />
         </div>
       </section>
+
+      {/* Últimos Protocolos */}
+      {ultimosProtocolos.length > 0 && (
+        <section className="animate-slide-up" style={{ animationDelay: '0.3s' }}>
+          <div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
+                <span className="w-1.5 h-10 bg-gradient-to-b from-indigo-500 to-purple-600 rounded-full"></span>
+                Últimos Protocolos
+              </h2>
+              <p className="text-gray-500 text-sm mt-1 ml-4">
+                Registros mais recentes retornados pela API
+              </p>
+            </div>
+          </div>
+
+          <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-100 shadow-lg overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                      Protocolo
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                      Canal
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                      Tipo
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                      Criado em
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-100 text-sm">
+                  {ultimosProtocolos.map((p) => {
+                    const codigo = p.protocolo_codigo || p.codigo || p.id
+                    const status = statusLabels[p.status] || p.status || '-'
+                    const canalNome = canalLabels[p.canal] || p.canal || '-'
+                    const tipo = p.tipo_atendimento || '-'
+                    const criadoRaw = p.criado_em || p.created_at || p.data_criacao
+                    const criado =
+                      criadoRaw
+                        ? new Date(criadoRaw).toLocaleString('pt-BR', {
+                            day: '2-digit',
+                            month: '2-digit',
+                            year: '2-digit',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })
+                        : '-'
+
+                    return (
+                      <tr key={`${codigo}-${criadoRaw || ''}`} className="hover:bg-gray-50/80">
+                        <td className="px-4 py-3 whitespace-nowrap font-medium text-gray-900">
+                          {codigo}
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-700">
+                            {status}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap text-gray-700">{canalNome}</td>
+                        <td className="px-4 py-3 whitespace-nowrap text-gray-700 capitalize">
+                          {tipo}
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap text-gray-500">{criado}</td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+      )}
     </div>
   )
 }
