@@ -9,3 +9,8 @@ export async function getProtocolos() {
   const response = await api.get('/api/dashboard/protocolos');
   return response.data;
 }
+
+export async function getProtocolosPorDia() {
+  const response = await api.get('/api/dashboard/protocolos-por-dia');
+  return response.data;
+}
