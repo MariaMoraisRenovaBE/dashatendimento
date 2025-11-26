@@ -14,7 +14,7 @@ export default function Dashboard() {
     data: dadosPorDia,
     loading: loadingPorDia,
     error: errorPorDia
-  } = useProtocolosPorDia(60000)
+  } = useProtocolosPorDia(15000)
 
   // Processamento de atendimentos por dia (a partir da data de início do projeto)
   let diasPorDia = []
