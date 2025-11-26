@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useProtocolos } from '../hooks/useProtocolos'
+import { useProtocolosPorDia } from '../hooks/useProtocolosPorDia'
 import { formatSeconds, formatSecondsToTime, secondsToMinutes } from '../utils/formatters'
 import StatBox from '../components/StatBox'
 import DonutComparison from '../components/DonutComparison'
@@ -9,6 +10,24 @@ import ProgressBar from '../components/ProgressBar'
 
 export default function Dashboard() {
   const { data, loading, error } = useProtocolos(15000)
+  const {
+    data: dadosPorDia,
+    loading: loadingPorDia,
+    error: errorPorDia
+  } = useProtocolosPorDia(60000)
+
+  // Processamento de atendimentos por dia (a partir do dia 20 de cada mês)
+  let diasPorDia = []
+  if (dadosPorDia && Array.isArray(dadosPorDia)) {
+    diasPorDia = dadosPorDia
+      .map((d) => ({
+        ...d,
+        _diaDate: new Date(d.dia)
+      }))
+      .sort((a, b) => a._diaDate - b._diaDate)
+      // Mantém apenas os dias a partir do dia 20 (data de início do projeto)
+      .filter((d) => d._diaDate.getDate() >= 20)
+  }
 
   if (loading && !data) {
     return (
@@ -333,6 +352,87 @@ export default function Dashboard() {
           />
         </div>
       </section>
+
+      {/* Atendimentos por Dia - Bot x Humano */}
+      {diasPorDia.length > 0 && (
+        <section className="animate-slide-up" style={{ animationDelay: '0.28s' }}>
+          <div className="mb-6">
+            <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
+              <span className="w-1.5 h-10 bg-gradient-to-b from-indigo-500 to-sky-600 rounded-full"></span>
+              Atendimentos por Dia (Bot x Humano)
+            </h2>
+            <p className="text-gray-500 text-sm mt-1 ml-4">
+              Evolução diária da quantidade de atendimentos por tipo
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Gráfico de linhas - total por dia */}
+            <LineChart
+              title="Total de Atendimentos por Dia"
+              labels={diasPorDia.map((d) =>
+                d._diaDate.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+              )}
+              data={diasPorDia.map((d) => {
+                const botDia = Number(d.bot) || 0
+                const humanoDia = Number(d.humano) || 0
+                return botDia + humanoDia
+              })}
+            />
+
+            {/* Tabela resumo Bot x Humano por dia */}
+            <div className="bg-white/80 backdrop-blur-xl rounded-2xl p-6 border border-gray-100 shadow-lg overflow-hidden">
+              <h3 className="text-lg font-bold text-gray-900 mb-4">Resumo Diário Bot x Humano</h3>
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200 text-sm">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-4 py-2 text-left font-semibold text-gray-500 uppercase tracking-wider">
+                        Dia
+                      </th>
+                      <th className="px-4 py-2 text-right font-semibold text-purple-600 uppercase tracking-wider">
+                        Bot
+                      </th>
+                      <th className="px-4 py-2 text-right font-semibold text-emerald-600 uppercase tracking-wider">
+                        Humano
+                      </th>
+                      <th className="px-4 py-2 text-right font-semibold text-gray-600 uppercase tracking-wider">
+                        Total
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-100">
+                    {diasPorDia.map((d) => {
+                      const diaFormatado = d._diaDate.toLocaleDateString('pt-BR', {
+                        day: '2-digit',
+                        month: '2-digit'
+                      })
+                      const botDia = Number(d.bot) || 0
+                      const humanoDia = Number(d.humano) || 0
+                      const totalDia = botDia + humanoDia
+
+                      return (
+                        <tr key={d.dia} className="hover:bg-gray-50/80">
+                          <td className="px-4 py-2 text-gray-700">{diaFormatado}</td>
+                          <td className="px-4 py-2 text-right text-purple-700 font-semibold">
+                            {botDia.toLocaleString('pt-BR')}
+                          </td>
+                          <td className="px-4 py-2 text-right text-emerald-700 font-semibold">
+                            {humanoDia.toLocaleString('pt-BR')}
+                          </td>
+                          <td className="px-4 py-2 text-right text-gray-800 font-semibold">
+                            {totalDia.toLocaleString('pt-BR')}
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Últimos Protocolos */}
       {ultimosProtocolos.length > 0 && (
