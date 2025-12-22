@@ -518,6 +518,9 @@ export async function getAllPipelineOpportunities(pipelineId, useCache = true, m
  * @param {boolean} options.compareWithPrevious - Se true, busca dados do período anterior para comparação
  */
 export async function getPipelinesData(options = {}) {
+  // Função helper para adicionar delay entre requisições (evitar 429)
+  const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+  
   try {
     // Log detalhado dos filtros recebidos
     console.log(`\n🔍 [getPipelinesData] Filtros recebidos:`, {
@@ -547,9 +550,6 @@ export async function getPipelinesData(options = {}) {
     } else {
       console.log('📅 Nenhum filtro de data - buscando TODAS as oportunidades');
     }
-
-    // Função helper para adicionar delay entre requisições (evitar 429)
-    const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
     
     // 1. Buscar todas as pipelines
     let pipelines = await getPipelines();
@@ -942,10 +942,8 @@ export async function getPipelinesData(options = {}) {
     }
 
     // Buscar tags em background (não bloquear renderização inicial)
-    // Função helper para adicionar delay entre requisições (evitar 429)
-    const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-    
     // Limitar a busca de tags para evitar rate limiting (máximo 10 contatos na primeira carga)
+    // Nota: delay já está declarado no início da função getPipelinesData
     // Reduzido ainda mais para carregamento mais rápido
     const maxContactsToCheck = 10;
     const opportunitiesToCheck = opportunities.slice(0, maxContactsToCheck);
