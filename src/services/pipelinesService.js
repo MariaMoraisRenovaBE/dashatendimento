@@ -640,19 +640,21 @@ export async function getPipelinesData(options = {}) {
         const isCacheStale = cacheAge !== null && cacheAge < CACHE_DURATION * 3; // Cache "stale" até 15 minutos
         const isFirstLoad = !opportunitiesCache || !cacheTimestamp; // Definir antes do if/else para estar sempre disponível
         
-        // ESTRATÉGIA: Se há filtro de data, SEMPRE usar cache se disponível (mesmo se expirado)
-        // Filtros devem ser instantâneos usando cache, não buscar tudo novamente
-        // Igual ao localhost - sempre usar cache quando há filtro
-        if (hasDateFilter && opportunitiesCache && cacheTimestamp) {
-          // SEMPRE usar cache quando há filtro (mesmo expirado) - filtro deve ser instantâneo
-          console.log(`   ✅ USANDO CACHE PARA FILTRO (${Math.round(cacheAge / 1000)}s de idade, ${opportunitiesCache.length.toLocaleString('pt-BR')} oportunidades)`);
-          console.log(`   ⚡ Filtro será aplicado instantaneamente usando cache`);
+        // ESTRATÉGIA SIMPLES: SEMPRE usar cache se disponível (mesmo expirado até 15 minutos)
+        // Filtros devem ser instantâneos usando cache
+        if (opportunitiesCache && cacheTimestamp) {
+          // SEMPRE usar cache quando disponível (mesmo expirado até 15 min) - filtro instantâneo
+          if (cacheAge < CACHE_DURATION) {
+            console.log(`   ✅ USANDO CACHE VÁLIDO (${Math.round(cacheAge / 1000)}s de idade, ${opportunitiesCache.length.toLocaleString('pt-BR')} oportunidades)`);
+          } else if (cacheAge < CACHE_DURATION * 3) {
+            console.log(`   ✅ USANDO CACHE EXPIRADO (${Math.round(cacheAge / 1000)}s de idade, ${opportunitiesCache.length.toLocaleString('pt-BR')} oportunidades) - Filtro será instantâneo`);
+          }
           opportunities = [...opportunitiesCache]; // Usar cópia do cache
           
-          // Atualizar cache em background se estiver expirado (sem bloquear o filtro)
+          // Atualizar cache em background se estiver expirado (sem bloquear)
           if (cacheAge > CACHE_DURATION) {
             setTimeout(() => {
-              console.log(`   🔄 Atualizando cache em background (sem bloquear filtro)...`);
+              console.log(`   🔄 Atualizando cache em background (sem bloquear)...`);
               getAllPipelineOpportunities(pipeline.id, false, null).then(fullOpportunities => {
                 console.log(`   ✅ Cache atualizado em background: ${fullOpportunities.length.toLocaleString('pt-BR')} oportunidades`);
                 opportunitiesCache = fullOpportunities;
@@ -660,47 +662,16 @@ export async function getPipelinesData(options = {}) {
               }).catch(err => {
                 console.warn(`   ⚠️ Erro ao atualizar cache em background:`, err);
               });
-            }, 2000); // Aguardar 2s para não interferir com o filtro atual
+            }, 2000);
           }
-        } else if (isCacheValid) {
-          // Sem filtro e cache válido: usar cache
-          console.log(`   ✅ USANDO CACHE (${Math.round(cacheAge / 1000)}s de idade, ${opportunitiesCache.length.toLocaleString('pt-BR')} oportunidades)`);
-          opportunities = [...opportunitiesCache]; // Usar cópia do cache
         } else {
-          // Cache não disponível ou expirado
-          let initialLimit = null; // Sem limite por padrão (buscar tudo)
+          // Cache não disponível - buscar com limite inicial
+          let initialLimit = 5000; // Limitar primeira carga a 5k (50 req = ~50s)
+          console.log(`   ⚡ PRIMEIRA CARGA: Limitando a ${initialLimit.toLocaleString('pt-BR')} oportunidades para carregamento rápido`);
+          console.log(`   💡 O restante será carregado em background após a primeira renderização`);
           
-          // IMPORTANTE: Se há filtro mas não tem cache, buscar quantidade razoável primeiro
-          // para aplicar filtro rapidamente, depois buscar restante em background
-          if (hasDateFilter && !opportunitiesCache) {
-            initialLimit = 20000; // Buscar 20k primeiro (200 req = ~200s = ~3.5 min) para aplicar filtro rápido
-            console.log(`   🔍 FILTRO ATIVO MAS SEM CACHE: Buscando ${initialLimit.toLocaleString('pt-BR')} oportunidades primeiro para aplicar filtro`);
-            console.log(`   ⚡ O filtro será aplicado rapidamente nos ${initialLimit.toLocaleString('pt-BR')} primeiros registros`);
-            console.log(`   💡 O restante será buscado em background após aplicar o filtro`);
-          } else if (!hasDateFilter && isFirstLoad) {
-            // Sem filtro e primeira carga: limitar para carregamento rápido
-            initialLimit = 5000; // Limitar primeira carga a 5k (50 req = ~50s com delay de 1s)
-            console.log(`   ⚡ PRIMEIRA CARGA SEM FILTRO: Limitando a ${initialLimit.toLocaleString('pt-BR')} oportunidades para carregamento rápido`);
-            console.log(`   💡 O restante será carregado em background após a primeira renderização`);
-          }
-          
-          // Buscar dados (sem usar cache, pois não está disponível)
+          // Buscar dados (sem usar cache)
           opportunities = await getAllPipelineOpportunities(pipeline.id, false, initialLimit);
-          
-          // Se tem filtro e busca inicial foi limitada, buscar restante em background após aplicar filtro
-          if (hasDateFilter && initialLimit && opportunities.length >= initialLimit) {
-            console.log(`   🔄 Buscando restante das oportunidades em background para filtro completo...`);
-            setTimeout(() => {
-              getAllPipelineOpportunities(pipeline.id, false, null).then(fullOpportunities => {
-                console.log(`   ✅ Busca completa finalizada em background: ${fullOpportunities.length.toLocaleString('pt-BR')} oportunidades`);
-                // Atualizar cache com dados completos
-                opportunitiesCache = fullOpportunities;
-                cacheTimestamp = Date.now();
-              }).catch(err => {
-                console.warn(`   ⚠️ Erro ao buscar oportunidades completas em background:`, err);
-              });
-            }, 3000); // Aguardar 3s para aplicar filtro primeiro
-          }
         }
         
         // Se é primeira carga sem filtro e temos menos que o esperado, buscar o restante em background
