@@ -436,9 +436,10 @@ export async function getAllPipelineOpportunities(pipelineId, useCache = true, m
       // Adicionar delay entre requisições para respeitar limite de 100 req/min
       // API NextagsAI: máximo 100 requisições por minuto
       // 100 req/min = 1 req a cada 0,6s = 600ms mínimo
-      // Usando 800ms para ter margem de segurança maior (75 req/min)
+      // Usando 1000ms (1s) para ter margem de segurança muito maior (60 req/min)
+      // Isso garante que nunca ultrapassaremos o limite mesmo com outras requisições simultâneas
       if (hasMore) {
-        const delayBetweenRequests = 800; // 800ms = ~75 req/min (margem de segurança maior)
+        const delayBetweenRequests = 1000; // 1000ms = 60 req/min (margem de segurança muito maior)
         await delay(delayBetweenRequests);
         
         // Log apenas a cada 50 páginas para não poluir o console
@@ -555,7 +556,8 @@ export async function getPipelinesData(options = {}) {
     let pipelines = await getPipelines();
     
     // Aguardar antes de próxima requisição para respeitar rate limit
-    await delay(800);
+    // Delay maior para garantir que não ultrapassamos o limite
+    await delay(1000);
     
     // Garantir que pipelines é um array
     if (!Array.isArray(pipelines)) {
@@ -608,7 +610,8 @@ export async function getPipelinesData(options = {}) {
       stages = await getPipelineStages(pipeline.id);
       
       // Aguardar antes de próxima requisição para respeitar rate limit
-      await delay(800);
+      // Delay maior para garantir que não ultrapassamos o limite
+      await delay(1000);
       if (!Array.isArray(stages)) {
         console.warn('⚠️ Stages não retornou um array, usando array vazio');
         stages = [];
