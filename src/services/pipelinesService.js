@@ -632,63 +632,23 @@ export async function getPipelinesData(options = {}) {
       
       let opportunities = [];
       try {
-        // IMPORTANTE: SEMPRE priorizar cache quando disponível (mesmo com filtro)
-        // O filtro será aplicado no cliente depois, usando os dados do cache
+        // ESTRATÉGIA SIMPLES: usar cache se disponível, senão buscar tudo
+        // O getAllPipelineOpportunities já gerencia rate limiting internamente
         const hasDateFilter = options.dateFrom || options.dateTo;
-        const cacheAge = opportunitiesCache && cacheTimestamp ? Date.now() - cacheTimestamp : null;
-        const isCacheValid = cacheAge !== null && cacheAge < CACHE_DURATION;
-        const isCacheStale = cacheAge !== null && cacheAge < CACHE_DURATION * 3; // Cache "stale" até 15 minutos
-        const isFirstLoad = !opportunitiesCache || !cacheTimestamp; // Definir antes do if/else para estar sempre disponível
         
-        // ESTRATÉGIA SIMPLES: SEMPRE usar cache se disponível (mesmo expirado até 15 minutos)
-        // Filtros devem ser instantâneos usando cache
         if (opportunitiesCache && cacheTimestamp) {
-          // SEMPRE usar cache quando disponível (mesmo expirado até 15 min) - filtro instantâneo
+          const cacheAge = Date.now() - cacheTimestamp;
           if (cacheAge < CACHE_DURATION) {
             console.log(`   ✅ USANDO CACHE VÁLIDO (${Math.round(cacheAge / 1000)}s de idade, ${opportunitiesCache.length.toLocaleString('pt-BR')} oportunidades)`);
-          } else if (cacheAge < CACHE_DURATION * 3) {
-            console.log(`   ✅ USANDO CACHE EXPIRADO (${Math.round(cacheAge / 1000)}s de idade, ${opportunitiesCache.length.toLocaleString('pt-BR')} oportunidades) - Filtro será instantâneo`);
-          }
-          opportunities = [...opportunitiesCache]; // Usar cópia do cache
-          
-          // Atualizar cache em background se estiver expirado (sem bloquear)
-          if (cacheAge > CACHE_DURATION) {
-            setTimeout(() => {
-              console.log(`   🔄 Atualizando cache em background (sem bloquear)...`);
-              getAllPipelineOpportunities(pipeline.id, false, null).then(fullOpportunities => {
-                console.log(`   ✅ Cache atualizado em background: ${fullOpportunities.length.toLocaleString('pt-BR')} oportunidades`);
-                opportunitiesCache = fullOpportunities;
-                cacheTimestamp = Date.now();
-              }).catch(err => {
-                console.warn(`   ⚠️ Erro ao atualizar cache em background:`, err);
-              });
-            }, 2000);
+            opportunities = [...opportunitiesCache];
+          } else {
+            console.log(`   ⏰ Cache expirado (${Math.round(cacheAge / 1000)}s). Buscando dados atualizados...`);
+            opportunities = await getAllPipelineOpportunities(pipeline.id, true, null);
           }
         } else {
-          // Cache não disponível - buscar com limite inicial
-          let initialLimit = 5000; // Limitar primeira carga a 5k (50 req = ~50s)
-          console.log(`   ⚡ PRIMEIRA CARGA: Limitando a ${initialLimit.toLocaleString('pt-BR')} oportunidades para carregamento rápido`);
-          console.log(`   💡 O restante será carregado em background após a primeira renderização`);
-          
-          // Buscar dados (sem usar cache)
-          opportunities = await getAllPipelineOpportunities(pipeline.id, false, initialLimit);
-        }
-        
-        // Se é primeira carga sem filtro e temos menos que o esperado, buscar o restante em background
-        // Aguardar 1 minuto para garantir que não ultrapassemos o limite de 100 req/min
-        if (!hasDateFilter && isFirstLoad && opportunities.length < 30000) {
-          console.log(`   🔄 Buscando restante das oportunidades em background (aguardando 60s para respeitar limite de 100 req/min)...`);
-          // Aguardar 60 segundos (1 minuto) para resetar o contador de rate limit
-          setTimeout(() => {
-            getAllPipelineOpportunities(pipeline.id, false, null).then(fullOpportunities => {
-              console.log(`   ✅ Busca completa finalizada em background: ${fullOpportunities.length.toLocaleString('pt-BR')} oportunidades`);
-              // Atualizar cache com dados completos
-              opportunitiesCache = fullOpportunities;
-              cacheTimestamp = Date.now();
-            }).catch(err => {
-              console.warn(`   ⚠️ Erro ao buscar oportunidades completas em background:`, err);
-            });
-          }, 60000); // Aguardar 60 segundos (1 minuto)
+          // Cache não disponível - buscar tudo (com cache habilitado para próximas vezes)
+          console.log(`   🔄 Cache não disponível. Buscando todas as oportunidades...`);
+          opportunities = await getAllPipelineOpportunities(pipeline.id, true, null);
         }
         
         console.log(`   📊 Resultado da busca:`, {
