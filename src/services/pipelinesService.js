@@ -111,6 +111,12 @@ function parseApiResponse(responseData) {
     }
   }
   
+  // Se resposta tem 'error' mas também tem 'data', usar 'data'
+  if (responseData?.error && responseData?.data) {
+    console.warn('⚠️ Resposta tem campo error, mas também tem data. Usando data.');
+    // Continuar normalmente para processar o data
+  }
+  
   // Retornar data.data se existir, senão retornar data, senão retornar array vazio
   if (Array.isArray(responseData)) {
     return responseData;
@@ -120,6 +126,12 @@ function parseApiResponse(responseData) {
     // Se data existe mas não é array, tentar extrair array dos valores
     const arrayValue = Object.values(responseData.data).find(v => Array.isArray(v));
     return arrayValue || [];
+  }
+  
+  // Se resposta tem apenas 'error', logar mas retornar vazio (não quebrar)
+  if (responseData?.error && !responseData?.data) {
+    console.error('❌ Resposta contém apenas error, sem data:', responseData.error);
+    return [];
   }
   
   return [];
@@ -156,6 +168,15 @@ export async function getPipelines(options = {}) {
     console.log('   - Response.data completo:', JSON.stringify(response.data, null, 2).substring(0, 1000));
     if (response.data && typeof response.data === 'object') {
       console.log('   - Keys do objeto:', Object.keys(response.data));
+      
+      // IMPORTANTE: Se a resposta tem 'error', pode ser erro da API ou estrutura diferente
+      if (response.data.error && !response.data.data) {
+        console.error('❌ API retornou erro na resposta:', response.data.error);
+        console.error('   Mensagem completa:', JSON.stringify(response.data, null, 2));
+        // Não lançar erro imediatamente - pode ser que funcione mesmo com erro
+        console.warn('⚠️ Continuando mesmo com campo error presente...');
+      }
+      
       if (response.data.data) {
         console.log('   - response.data.data existe?', !!response.data.data);
         console.log('   - response.data.data é array?', Array.isArray(response.data.data));

@@ -146,14 +146,29 @@ exports.handler = async (event, context) => {
 
     const data = await response.text();
     
-    // Log da resposta
-    console.log('📥 [Proxy] Resposta da NextagsAI:', {
-      status: response.status,
-      statusText: response.statusText,
-      contentType: response.headers.get('content-type'),
-      dataLength: data.length,
-      dataPreview: data.substring(0, 200)
-    });
+    // Tentar parsear para ver se é JSON e logar estrutura
+    let parsedData = null;
+    try {
+      parsedData = JSON.parse(data);
+      console.log('📥 [Proxy] Resposta da NextagsAI (parsed):', {
+        status: response.status,
+        statusText: response.statusText,
+        contentType: response.headers.get('content-type'),
+        dataLength: data.length,
+        isArray: Array.isArray(parsedData),
+        keys: parsedData && typeof parsedData === 'object' ? Object.keys(parsedData) : 'N/A',
+        dataPreview: JSON.stringify(parsedData).substring(0, 500)
+      });
+    } catch (e) {
+      // Se não for JSON, logar como texto
+      console.log('📥 [Proxy] Resposta da NextagsAI (texto):', {
+        status: response.status,
+        statusText: response.statusText,
+        contentType: response.headers.get('content-type'),
+        dataLength: data.length,
+        dataPreview: data.substring(0, 500)
+      });
+    }
     
     // Se for erro 500, tentar parsear para ver se tem mais detalhes
     if (response.status >= 500) {
