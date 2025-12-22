@@ -149,6 +149,20 @@ export async function getPipelines(options = {}) {
     const response = await api.get(endpoint);
     console.log('✅ Resposta recebida:', response.status, response.statusText);
     
+    // Log detalhado da estrutura da resposta
+    console.log('📦 Estrutura completa da resposta:');
+    console.log('   - Tipo de response.data:', typeof response.data);
+    console.log('   - É array?', Array.isArray(response.data));
+    console.log('   - Response.data completo:', JSON.stringify(response.data, null, 2).substring(0, 1000));
+    if (response.data && typeof response.data === 'object') {
+      console.log('   - Keys do objeto:', Object.keys(response.data));
+      if (response.data.data) {
+        console.log('   - response.data.data existe?', !!response.data.data);
+        console.log('   - response.data.data é array?', Array.isArray(response.data.data));
+        console.log('   - Tamanho de response.data.data:', Array.isArray(response.data.data) ? response.data.data.length : 'N/A');
+      }
+    }
+    
     // Usar helper para processar resposta (pode vir como string ou objeto)
     const pipelines = parseApiResponse(response.data);
     
@@ -156,6 +170,14 @@ export async function getPipelines(options = {}) {
     console.log(`📊 Pipelines retornadas: ${pipelines.length} item(s)`);
     if (pipelines.length > 0) {
       console.log('📋 Primeira pipeline:', pipelines[0]);
+    } else {
+      console.warn('⚠️ ATENÇÃO: A API retornou 0 pipelines!');
+      console.warn('   Isso pode significar:');
+      console.warn('   1. O token não tem permissão para ver pipelines');
+      console.warn('   2. Não há pipelines cadastradas para esta conta');
+      console.warn('   3. A estrutura da resposta é diferente do esperado');
+      console.warn('   📋 Teste diretamente no Swagger: https://app.nextagsai.com.br/api/swagger/');
+      console.warn('   📋 Endpoint: GET /pipelines/');
     }
     
     return pipelines;
