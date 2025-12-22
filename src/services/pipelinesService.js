@@ -1,23 +1,19 @@
 import axios from 'axios';
 
 /**
- * Cliente Axios configurado para usar o proxy /api-nextags em desenvolvimento
- * ou a URL completa da API em produção
+ * Cliente Axios configurado para usar o proxy /api-nextags
+ * Em desenvolvimento: usa proxy do Vite
+ * Em produção (Netlify): usa Netlify Function que faz proxy para a API
  */
-const isDevelopment = import.meta.env.DEV;
-const API_BASE_URL = isDevelopment 
-  ? '/api-nextags'  // Em desenvolvimento, usa proxy do Vite
-  : 'https://app.nextagsai.com.br/api';  // Em produção, usa URL completa
-
 const api = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: '/api-nextags',
   headers: {
     'Content-Type': 'application/json'
   }
 });
 
-console.log('🔧 [API Config] Ambiente:', isDevelopment ? 'Desenvolvimento' : 'Produção');
-console.log('🔧 [API Config] Base URL:', API_BASE_URL);
+console.log('🔧 [API Config] Base URL:', '/api-nextags');
+console.log('🔧 [API Config] Ambiente:', import.meta.env.DEV ? 'Desenvolvimento' : 'Produção');
 
 /**
  * Interceptor que adiciona o header de autenticação em todas as requisições

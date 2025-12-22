@@ -1,0 +1,6 @@
+  VITE_API_URL=https://phpstack-1358125-6012593.cloudwaysapps.com/api/dashboard/protocolos
+   VITE_API_URL=https://phpstack-1358125-6012593.cloudwaysapps.com
+   VITE_PIPELINES_API_URL=https://app.nextagsai.com.br/api
+   VITE_PIPELINES_API_TOKEN=1791880.LwRUoX2yNLNXrM6jxo5bedBEfRULGvll4pQL5kURYli
+# Formato de autenticação para API Nextags (tente 'token' se 'bearer' não funcionar)
+VITE_PIPELINES_AUTH_FORMAT=token
