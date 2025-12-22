@@ -88,7 +88,6 @@ api.interceptors.request.use(
     // Log da URL final que será chamada
     const finalUrl = config.baseURL + config.url;
     console.log('📡 [INTERCEPTOR] Requisição será feita para:', finalUrl);
-    console.log('📡 [INTERCEPTOR] URL completa (após proxy): https://app.nextagsai.com.br/api' + config.url);
     
     return config;
   },
@@ -671,12 +670,13 @@ export async function getPipelinesData(options = {}) {
           // Cache não disponível ou expirado
           let initialLimit = null; // Sem limite por padrão (buscar tudo)
           
-          // IMPORTANTE: Se há filtro mas não tem cache, buscar TUDO (igual localhost)
-          // Não limitar quando há filtro - o usuário quer ver todos os dados do período
+          // IMPORTANTE: Se há filtro mas não tem cache, buscar quantidade razoável primeiro
+          // para aplicar filtro rapidamente, depois buscar restante em background
           if (hasDateFilter && !opportunitiesCache) {
-            console.log(`   🔍 FILTRO ATIVO MAS SEM CACHE: Buscando TODAS as oportunidades para aplicar filtro corretamente`);
-            console.log(`   ⏳ Isso pode demorar, mas garante que o filtro funcione corretamente (igual localhost)`);
-            initialLimit = null; // Buscar tudo quando há filtro
+            initialLimit = 20000; // Buscar 20k primeiro (200 req = ~200s = ~3.5 min) para aplicar filtro rápido
+            console.log(`   🔍 FILTRO ATIVO MAS SEM CACHE: Buscando ${initialLimit.toLocaleString('pt-BR')} oportunidades primeiro para aplicar filtro`);
+            console.log(`   ⚡ O filtro será aplicado rapidamente nos ${initialLimit.toLocaleString('pt-BR')} primeiros registros`);
+            console.log(`   💡 O restante será buscado em background após aplicar o filtro`);
           } else if (!hasDateFilter && isFirstLoad) {
             // Sem filtro e primeira carga: limitar para carregamento rápido
             initialLimit = 5000; // Limitar primeira carga a 5k (50 req = ~50s com delay de 1s)
