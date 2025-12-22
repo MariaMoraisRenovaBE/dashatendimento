@@ -62,6 +62,12 @@ exports.handler = async (event, context) => {
     
     // Fazer a requisição para o Laravel (que faz proxy para a API NextagsAI)
     // O Laravel já cuida da autenticação, então não precisa passar headers de auth aqui
+    console.log('📤 [Proxy] Enviando requisição para Laravel:', {
+      url: apiUrl,
+      method: event.httpMethod,
+      hasBody: !!event.body
+    });
+    
     const response = await fetch(apiUrl, {
       method: event.httpMethod,
       headers: requestHeaders,
@@ -69,6 +75,37 @@ exports.handler = async (event, context) => {
     });
 
     const data = await response.text();
+    
+    // Log da resposta
+    console.log('📥 [Proxy] Resposta do Laravel:', {
+      status: response.status,
+      statusText: response.statusText,
+      contentType: response.headers.get('content-type'),
+      dataLength: data.length,
+      dataPreview: data.substring(0, 200)
+    });
+    
+    // Se for erro 500, tentar parsear para ver se tem mais detalhes
+    if (response.status >= 500) {
+      console.error('❌ [Proxy] Erro 5xx do Laravel:', {
+        status: response.status,
+        data: data.substring(0, 500)
+      });
+    }
+    
+    // Se for 429 (rate limit), retornar erro específico
+    if (response.status === 429) {
+      console.warn('⚠️ [Proxy] Rate limit (429) detectado');
+      return {
+        statusCode: 429,
+        headers,
+        body: JSON.stringify({ 
+          error: 'Rate limit atingido',
+          message: 'Muitas requisições em pouco tempo. Aguarde alguns segundos e tente novamente.',
+          retryAfter: response.headers.get('retry-after') || 60
+        })
+      };
+    }
     
     return {
       statusCode: response.status,
@@ -79,7 +116,25 @@ exports.handler = async (event, context) => {
       body: data
     };
   } catch (error) {
-    console.error('Erro no proxy:', error);
+    console.error('❌ [Proxy] Erro ao processar requisição:', {
+      name: error.name,
+      message: error.message,
+      stack: error.stack?.substring(0, 500)
+    });
+    
+    // Se for erro de rede/connection, pode ser timeout ou indisponibilidade
+    if (error.message?.includes('fetch failed') || error.message?.includes('ECONNREFUSED') || error.message?.includes('ENOTFOUND')) {
+      return {
+        statusCode: 503,
+        headers,
+        body: JSON.stringify({ 
+          error: 'Serviço temporariamente indisponível',
+          message: 'Não foi possível conectar ao servidor Laravel. Verifique se o endpoint está acessível.',
+          details: error.message
+        })
+      };
+    }
+    
     return {
       statusCode: 500,
       headers,
