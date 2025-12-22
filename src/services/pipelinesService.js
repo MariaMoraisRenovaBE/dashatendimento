@@ -361,6 +361,23 @@ let opportunitiesCache = null;
 let cacheTimestamp = null;
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutos em milissegundos
 
+// Callback para notificar quando o cache é atualizado em background
+let cacheUpdateCallback = null;
+
+/**
+ * Registra um callback para ser chamado quando o cache for atualizado em background
+ */
+export function onCacheUpdate(callback) {
+  cacheUpdateCallback = callback;
+}
+
+/**
+ * Remove o callback de atualização de cache
+ */
+export function offCacheUpdate() {
+  cacheUpdateCallback = null;
+}
+
 /**
  * Limpa o cache de oportunidades (útil para forçar atualização)
  */
@@ -691,6 +708,12 @@ export async function getPipelinesData(options = {}) {
                   // Atualizar cache com dados completos
                   opportunitiesCache = fullOpportunities;
                   cacheTimestamp = Date.now();
+                  
+                  // Notificar o hook para atualizar o dashboard imediatamente
+                  if (cacheUpdateCallback) {
+                    console.log(`   🔄 Notificando hook para atualizar dashboard com ${fullOpportunities.length.toLocaleString('pt-BR')} oportunidades`);
+                    cacheUpdateCallback();
+                  }
                 } catch (err) {
                   console.warn(`   ⚠️ Erro ao buscar todas as oportunidades em background:`, err);
                 }
@@ -723,7 +746,13 @@ export async function getPipelinesData(options = {}) {
                 cacheTimestamp = Date.now();
                 
                 // Notificar no console que há mais dados disponíveis
-                console.log(`   💡 Cache atualizado! Na próxima atualização, todos os dados estarão disponíveis.`);
+                console.log(`   💡 Cache atualizado! Atualizando dashboard com todos os dados...`);
+                
+                // Notificar o hook para atualizar o dashboard imediatamente
+                if (cacheUpdateCallback) {
+                  console.log(`   🔄 Notificando hook para atualizar dashboard com ${fullOpportunities.length.toLocaleString('pt-BR')} oportunidades`);
+                  cacheUpdateCallback();
+                }
               } catch (err) {
                 console.warn(`   ⚠️ Erro ao buscar todas as oportunidades em background:`, err);
               }

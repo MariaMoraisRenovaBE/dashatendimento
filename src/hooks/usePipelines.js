@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
-import { getPipelinesData } from '../services/pipelinesService';
+import { getPipelinesData, onCacheUpdate, offCacheUpdate } from '../services/pipelinesService';
 
 export function usePipelines(refreshInterval = 300000, dateFilters = {}) { // 300 segundos (5 minutos) para evitar rate limiting e usar cache
   const [data, setData] = useState(null);
@@ -151,10 +151,21 @@ export function usePipelines(refreshInterval = 300000, dateFilters = {}) { // 30
       }
     }, refreshInterval);
 
+    // Registrar callback para ser notificado quando cache for atualizado em background
+    const handleCacheUpdate = () => {
+      if (isMounted && !isFetching.current) {
+        console.log('🔄 [usePipelines] Cache atualizado em background. Recarregando dados...');
+        load();
+      }
+    };
+    
+    onCacheUpdate(handleCacheUpdate);
+    
     return () => {
       isMounted = false;
       isFetching.current = false; // Reset ao desmontar
       clearInterval(id);
+      offCacheUpdate(); // Remover callback ao desmontar
     };
   }, [refreshInterval, dateFilters.dateFrom, dateFilters.dateTo]); // Recarrega quando filtros mudarem
 
