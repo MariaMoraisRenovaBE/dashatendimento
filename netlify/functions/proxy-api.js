@@ -18,39 +18,63 @@ exports.handler = async (event, context) => {
 
   try {
     // Extrair o path do evento
-    // Quando vem do redirect /api-nextags/* -> /.netlify/functions/proxy-api/:splat
-    // event.path pode ser: /.netlify/functions/proxy-api/pipelines/
-    // ou pode ter o path completo no event.rawPath
-    let path = event.path;
+    // O redirect /api-nextags/* -> /.netlify/functions/proxy-api
+    // O path original vem no event.headers['x-path'] ou podemos reconstruir
+    // event.path será /.netlify/functions/proxy-api
+    // O path original (/api-nextags/pipelines/) precisa ser extraído
     
-    // Remover o prefixo da função se existir
-    if (path.startsWith('/.netlify/functions/proxy-api')) {
-      path = path.replace('/.netlify/functions/proxy-api', '');
+    // Tentar pegar o path original do header ou query
+    let originalPath = event.headers['x-path'] || event.headers['x-original-path'];
+    
+    if (!originalPath) {
+      // Se não veio no header, tentar reconstruir do path
+      // Se event.path contém o path completo, extrair
+      const fullPath = event.path || event.rawPath || '';
+      
+      // Se o path contém /api-nextags, extrair a partir daí
+      if (fullPath.includes('/api-nextags')) {
+        originalPath = fullPath.substring(fullPath.indexOf('/api-nextags') + '/api-nextags'.length);
+      } else {
+        // Caso contrário, tentar pegar do query parameter ou usar o path após a função
+        originalPath = fullPath.replace('/.netlify/functions/proxy-api', '');
+      }
     }
     
-    // Se não tem path, tentar pegar do rawPath
-    if (!path || path === '/') {
-      path = event.rawPath || event.path;
-      if (path.startsWith('/.netlify/functions/proxy-api')) {
-        path = path.replace('/.netlify/functions/proxy-api', '');
+    // Se ainda não tem path, usar o que vier após /api-nextags
+    if (!originalPath || originalPath === '/') {
+      // Tentar pegar do query string se tiver
+      if (event.queryStringParameters?.path) {
+        originalPath = event.queryStringParameters.path;
+      } else {
+        // Fallback: assumir que o path é o que foi chamado originalmente
+        // Se chamou /api-nextags/pipelines/, o path deve ser /pipelines/
+        originalPath = '/pipelines/'; // Fallback mínimo
       }
     }
     
     // Garantir que começa com /
-    if (!path.startsWith('/')) {
-      path = '/' + path;
+    if (!originalPath.startsWith('/')) {
+      originalPath = '/' + originalPath;
     }
     
-    // Se veio query string, adicionar
-    if (event.queryStringParameters && Object.keys(event.queryStringParameters).length > 0) {
-      const queryString = new URLSearchParams(event.queryStringParameters).toString();
-      path += `?${queryString}`;
+    let path = originalPath;
+    
+    // Se veio query string (exceto path), adicionar
+    if (event.queryStringParameters) {
+      const params = { ...event.queryStringParameters };
+      delete params.path; // Remover path se estiver nos params
+      if (Object.keys(params).length > 0) {
+        const queryString = new URLSearchParams(params).toString();
+        path += `?${queryString}`;
+      }
     }
     
     console.log('🔍 [Proxy] Path extraído:', {
       eventPath: event.path,
       rawPath: event.rawPath,
-      extractedPath: path,
+      headers: Object.keys(event.headers).filter(h => h.toLowerCase().includes('path')),
+      originalPath: originalPath,
+      finalPath: path,
       queryParams: event.queryStringParameters
     });
     

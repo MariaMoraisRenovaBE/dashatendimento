@@ -2,12 +2,14 @@
   command = "npm run build"
   publish = "dist"
 
+# Redirect para API - DEVE VIR ANTES do redirect geral
 [[redirects]]
   from = "/api-nextags/*"
-  to = "/.netlify/functions/proxy-api/:splat"
+  to = "/.netlify/functions/proxy-api"
   status = 200
   force = true
 
+# Redirect geral para SPA - DEVE VIR DEPOIS
 [[redirects]]
   from = "/*"
   to = "/index.html"
