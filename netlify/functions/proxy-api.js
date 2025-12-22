@@ -60,6 +60,11 @@ exports.handler = async (event, context) => {
       path = path.substring(functionPrefix.length);
     }
     
+    // Se o path ainda começa com /api-nextags, remover também (não deve ter, mas garantir)
+    if (path.startsWith('/api-nextags')) {
+      path = path.substring('/api-nextags'.length);
+    }
+    
     // Garantir que começa com /
     if (!path.startsWith('/')) {
       path = '/' + path;
@@ -80,6 +85,7 @@ exports.handler = async (event, context) => {
     
     // URL do Laravel que faz proxy/autenticação para a API NextagsAI
     // O Laravel tem o endpoint /api-nextags configurado e funcionando
+    // IMPORTANTE: path já vem SEM /api-nextags, então apenas adicionamos /api-nextags no início
     // Endpoints funcionando no Laravel:
     // - GET /api-nextags/pipelines
     // - GET /api-nextags/pipelines/{id}/stages
