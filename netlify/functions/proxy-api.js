@@ -72,6 +72,9 @@ exports.handler = async (event, context) => {
     const LARAVEL_API_URL = 'https://phpstack-1358125-6012593.cloudwaysapps.com';
     const apiUrl = `${LARAVEL_API_URL}/api-nextags${path}`;
     
+    console.log('🔗 [Proxy] URL completa que será chamada:', apiUrl);
+    console.log('🔗 [Proxy] Path que será usado:', path);
+    
     console.log('📡 [Proxy] Requisição via Laravel para NextagsAI:', {
       method: event.httpMethod,
       path: event.path,
@@ -241,20 +244,30 @@ exports.handler = async (event, context) => {
     console.error('❌ [Proxy] Erro ao processar requisição:', {
       name: error.name,
       message: error.message,
+      code: error.code,
       stack: error.stack?.substring(0, 500)
     });
     
-    // Se for erro de rede/connection, pode ser timeout ou indisponibilidade
-    if (error.message?.includes('fetch failed') || error.message?.includes('ECONNREFUSED') || error.message?.includes('ENOTFOUND')) {
-            return {
-              statusCode: 503,
-              headers,
-              body: JSON.stringify({ 
-                error: 'Serviço temporariamente indisponível',
-                message: 'Não foi possível conectar ao servidor Laravel. Verifique se o endpoint está acessível.',
-                details: error.message
-              })
-            };
+    // Log detalhado do erro de conexão
+    if (error.message?.includes('fetch failed') || error.message?.includes('ECONNREFUSED') || error.message?.includes('ENOTFOUND') || error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND') {
+      console.error('🔍 [Proxy] Erro de conexão detectado:', {
+        errorName: error.name,
+        errorMessage: error.message,
+        errorCode: error.code,
+        attemptedUrl: apiUrl || 'N/A',
+        suggestion: 'Verifique se a URL do Laravel está correta e se o servidor está acessível'
+      });
+      
+      return {
+        statusCode: 503,
+        headers,
+        body: JSON.stringify({ 
+          error: 'Serviço temporariamente indisponível',
+          message: 'Não foi possível conectar ao servidor Laravel. Verifique se o endpoint está acessível.',
+          details: error.message,
+          attemptedUrl: apiUrl || 'N/A'
+        })
+      };
     }
     
     return {
