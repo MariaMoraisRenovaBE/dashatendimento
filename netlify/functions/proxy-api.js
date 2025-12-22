@@ -205,13 +205,34 @@ exports.handler = async (event, context) => {
       };
     }
     
+    // IMPORTANTE: Retornar exatamente como a API retornou
+    // Se a resposta for JSON, garantir que seja retornada como JSON (não string duplamente encodada)
+    let responseBody = data;
+    
+    // Se o content-type indica JSON, garantir que está parseado corretamente
+    const contentType = response.headers.get('content-type') || '';
+    if (contentType.includes('application/json')) {
+      // data já é string, mas vamos garantir que está correta
+      // Se já é string JSON válida, retornar como está
+      try {
+        // Validar que é JSON válido
+        JSON.parse(data);
+        // Se chegou aqui, é JSON válido - retornar como está (string)
+        responseBody = data;
+      } catch (e) {
+        // Se não for JSON válido, logar mas retornar mesmo assim
+        console.warn('⚠️ [Proxy] Resposta marcada como JSON mas não é JSON válido:', e.message);
+        responseBody = data;
+      }
+    }
+    
     return {
       statusCode: response.status,
       headers: {
         ...headers,
-        'Content-Type': response.headers.get('content-type') || 'application/json'
+        'Content-Type': contentType || 'application/json'
       },
-      body: data
+      body: responseBody
     };
   } catch (error) {
     console.error('❌ [Proxy] Erro ao processar requisição:', {
