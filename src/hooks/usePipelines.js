@@ -1,12 +1,39 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { getPipelinesData } from '../services/pipelinesService';
 
 export function usePipelines(refreshInterval = 300000, dateFilters = {}) { // 300 segundos (5 minutos) para evitar rate limiting e usar cache
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  
+  // Proteção contra execuções duplicadas (StrictMode, re-renders, etc)
+  const isInitialMount = useRef(true);
+  const isFetching = useRef(false);
+  const lastDateFromRef = useRef(dateFilters.dateFrom);
+  const lastDateToRef = useRef(dateFilters.dateTo);
 
   useEffect(() => {
+    // Verificar se os filtros realmente mudaram
+    const dateFromChanged = lastDateFromRef.current !== dateFilters.dateFrom;
+    const dateToChanged = lastDateToRef.current !== dateFilters.dateTo;
+    const filtersChanged = dateFromChanged || dateToChanged;
+    
+    // Atualizar referências
+    lastDateFromRef.current = dateFilters.dateFrom;
+    lastDateToRef.current = dateFilters.dateTo;
+    
+    // Se não é o mount inicial e os filtros não mudaram, não fazer nada
+    // (evita re-execução desnecessária)
+    if (!isInitialMount.current && !filtersChanged) {
+      return;
+    }
+    
+    // Proteção contra múltiplas chamadas simultâneas
+    if (isFetching.current) {
+      console.warn('⚠️ [usePipelines] Já existe uma requisição em andamento. Ignorando chamada duplicada.');
+      return;
+    }
+    
     let isMounted = true;
     let retryCount = 0;
     const maxRetries = 3;
@@ -16,10 +43,24 @@ export function usePipelines(refreshInterval = 300000, dateFilters = {}) { // 30
       dateFrom: dateFilters.dateFrom,
       dateTo: dateFilters.dateTo,
       hasDateFrom: !!dateFilters.dateFrom,
-      hasDateTo: !!dateFilters.dateTo
+      hasDateTo: !!dateFilters.dateTo,
+      isInitialMount: isInitialMount.current,
+      filtersChanged
     });
+    
+    // Marcar que não é mais o mount inicial
+    isInitialMount.current = false;
 
     async function load() {
+      // Proteção: se já está buscando, não buscar novamente
+      if (isFetching.current) {
+        console.warn('⚠️ [usePipelines] load() chamado mas já existe uma requisição em andamento. Ignorando.');
+        return;
+      }
+      
+      // Marcar que está buscando
+      isFetching.current = true;
+      
       try {
         // Sempre mostrar loading quando há filtros de data (para indicar que está recarregando)
         if (!data || dateFilters.dateFrom || dateFilters.dateTo) {
@@ -92,6 +133,9 @@ export function usePipelines(refreshInterval = 300000, dateFilters = {}) { // 30
         const errorMessage = err.message || err.response?.data?.message || 'Erro ao atualizar dados das pipelines';
         setError(errorMessage);
       } finally {
+        // Liberar o flag de fetching
+        isFetching.current = false;
+        
         if (!isMounted) return;
         setLoading(false);
       }
@@ -109,20 +153,10 @@ export function usePipelines(refreshInterval = 300000, dateFilters = {}) { // 30
 
     return () => {
       isMounted = false;
+      isFetching.current = false; // Reset ao desmontar
       clearInterval(id);
     };
   }, [refreshInterval, dateFilters.dateFrom, dateFilters.dateTo]); // Recarrega quando filtros mudarem
-  
-  // Log quando os filtros mudarem
-  useEffect(() => {
-    console.log('🔄 [usePipelines] Filtros de data mudaram:', {
-      dateFrom: dateFilters.dateFrom,
-      dateTo: dateFilters.dateTo,
-      hasDateFrom: !!dateFilters.dateFrom,
-      hasDateTo: !!dateFilters.dateTo,
-      fullObject: dateFilters
-    });
-  }, [dateFilters.dateFrom, dateFilters.dateTo, dateFilters]);
 
   return { data, loading, error };
 }
