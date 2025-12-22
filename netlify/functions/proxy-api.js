@@ -28,15 +28,17 @@ exports.handler = async (event, context) => {
       path += `?${queryString}`;
     }
     
-    // URL da API Nextags
-    const apiUrl = `https://app.nextagsai.com.br/api${path}`;
+    // URL do Laravel que faz proxy/autenticação para a API NextagsAI
+    // O Laravel já tem o endpoint /api-nextags configurado e funcionando
+    const LARAVEL_API_URL = 'https://phpstack-1358125-6012593.cloudwaysapps.com';
+    const apiUrl = `${LARAVEL_API_URL}/api-nextags${path}`;
     
-    console.log('📡 [Proxy] Requisição:', {
+    console.log('📡 [Proxy] Requisição via Laravel:', {
       method: event.httpMethod,
       path: event.path,
       extractedPath: path,
-      apiUrl: apiUrl,
-      headers: Object.keys(event.headers).filter(h => h.toLowerCase().includes('api') || h.toLowerCase().includes('token') || h.toLowerCase().includes('auth'))
+      laravelUrl: apiUrl,
+      usingLaravelProxy: true
     });
     
     // Copiar headers relevantes da requisição original
@@ -58,7 +60,8 @@ exports.handler = async (event, context) => {
       requestHeaders['api-key'] = event.headers['api-key'];
     }
     
-    // Fazer a requisição para a API (Node.js 18 tem fetch nativo)
+    // Fazer a requisição para o Laravel (que faz proxy para a API NextagsAI)
+    // O Laravel já cuida da autenticação, então não precisa passar headers de auth aqui
     const response = await fetch(apiUrl, {
       method: event.httpMethod,
       headers: requestHeaders,
