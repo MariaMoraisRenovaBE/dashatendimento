@@ -71,11 +71,21 @@ export function usePipelines(refreshInterval = 300000, dateFilters = {}) { // 30
         }
         
         // Se já temos dados anteriores, manter e apenas mostrar aviso
-        if (data && (err.message?.includes('429') || err.message?.includes('Rate limit'))) {
-          console.warn(`⚠️ Rate limit, mas mantendo dados anteriores visíveis`);
-          setError(err.message || 'Rate limit atingido. Dados podem estar desatualizados.');
-          setLoading(false);
-          return;
+        if (data) {
+          if (err.message?.includes('429') || err.response?.status === 429 || err.message?.includes('Rate limit')) {
+            console.warn(`⚠️ Rate limit, mas mantendo dados anteriores visíveis`);
+            setError(err.message || 'Rate limit atingido. Dados podem estar desatualizados.');
+            setLoading(false);
+            return;
+          }
+          
+          // Para erro 500, também manter dados anteriores se tiver
+          if (err.response?.status === 500 || err.message?.includes('500') || err.message?.includes('interno')) {
+            console.warn(`⚠️ Erro 500, mas mantendo dados anteriores visíveis`);
+            setError('Erro interno do servidor (500). Dados podem estar desatualizados. O sistema tentará atualizar automaticamente.');
+            setLoading(false);
+            return;
+          }
         }
         
         // Usar mensagem melhorada do erro
