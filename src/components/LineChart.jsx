@@ -97,7 +97,7 @@ export default function LineChart({ data, labels, title }) {
   }
 
   return (
-    <div className="bg-white/80 backdrop-blur-xl rounded-2xl p-6 border border-gray-100 shadow-lg">
+    <div className="bg-white/80 backdrop-blur-xl rounded-2xl p-6 border border-gray-100 shadow-lg w-full">
       {title && <h3 className="text-lg font-bold text-gray-900 mb-4">{title}</h3>}
       <div className="h-80">
         <Line data={chartData} options={options} />
