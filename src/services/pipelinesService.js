@@ -1,15 +1,23 @@
 import axios from 'axios';
 
 /**
- * Cliente Axios configurado para usar o proxy /api-nextags
- * Todas as requisições vão para /api-nextags/... e o Vite redireciona para https://app.nextagsai.com.br/api
+ * Cliente Axios configurado para usar o proxy /api-nextags em desenvolvimento
+ * ou a URL completa da API em produção
  */
+const isDevelopment = import.meta.env.DEV;
+const API_BASE_URL = isDevelopment 
+  ? '/api-nextags'  // Em desenvolvimento, usa proxy do Vite
+  : 'https://app.nextagsai.com.br/api';  // Em produção, usa URL completa
+
 const api = axios.create({
-  baseURL: '/api-nextags',
+  baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json'
   }
 });
+
+console.log('🔧 [API Config] Ambiente:', isDevelopment ? 'Desenvolvimento' : 'Produção');
+console.log('🔧 [API Config] Base URL:', API_BASE_URL);
 
 /**
  * Interceptor que adiciona o header de autenticação em todas as requisições
