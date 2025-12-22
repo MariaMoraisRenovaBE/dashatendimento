@@ -142,76 +142,101 @@ function parseApiResponse(responseData) {
  * Parâmetros opcionais: offset, limit
  */
 export async function getPipelines(options = {}) {
-  try {
-    const params = new URLSearchParams();
-    if (options.offset !== undefined) params.append('offset', options.offset);
-    if (options.limit !== undefined) params.append('limit', options.limit);
-    
-    const queryString = params.toString();
-    // Endpoint conforme documentação: GET /pipelines/
-    const endpoint = queryString ? `/pipelines/?${queryString}` : '/pipelines/';
-    
-    console.log('📡 [getPipelines] Iniciando requisição...');
-    console.log('   - Base URL:', api.defaults.baseURL);
-    console.log('   - Endpoint:', endpoint);
-    console.log('   - URL completa:', api.defaults.baseURL + endpoint);
-    console.log('   - URL no navegador:', typeof window !== 'undefined' ? window.location.origin + api.defaults.baseURL + endpoint : 'N/A');
-    
-    const response = await api.get(endpoint);
-    console.log('✅ Resposta recebida:', response.status, response.statusText);
-    
-    // Log detalhado da estrutura da resposta
-    console.log('📦 Estrutura completa da resposta:');
-    console.log('   - Tipo de response.data:', typeof response.data);
-    console.log('   - É array?', Array.isArray(response.data));
-    console.log('   - Response.data completo:', JSON.stringify(response.data, null, 2).substring(0, 1000));
-    if (response.data && typeof response.data === 'object') {
-      console.log('   - Keys do objeto:', Object.keys(response.data));
+  const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+  const maxRetries = 3;
+  let retryCount = 0;
+  
+  while (retryCount <= maxRetries) {
+    try {
+      const params = new URLSearchParams();
+      if (options.offset !== undefined) params.append('offset', options.offset);
+      if (options.limit !== undefined) params.append('limit', options.limit);
       
-      // IMPORTANTE: Se a resposta tem 'error', pode ser erro da API ou estrutura diferente
-      if (response.data.error && !response.data.data) {
-        console.error('❌ API retornou erro na resposta:', response.data.error);
-        console.error('   Mensagem completa:', JSON.stringify(response.data, null, 2));
-        // Não lançar erro imediatamente - pode ser que funcione mesmo com erro
-        console.warn('⚠️ Continuando mesmo com campo error presente...');
+      const queryString = params.toString();
+      // Endpoint conforme documentação: GET /pipelines/
+      const endpoint = queryString ? `/pipelines/?${queryString}` : '/pipelines/';
+      
+      if (retryCount === 0) {
+        console.log('📡 [getPipelines] Iniciando requisição...');
+        console.log('   - Base URL:', api.defaults.baseURL);
+        console.log('   - Endpoint:', endpoint);
+        console.log('   - URL completa:', api.defaults.baseURL + endpoint);
+        console.log('   - URL no navegador:', typeof window !== 'undefined' ? window.location.origin + api.defaults.baseURL + endpoint : 'N/A');
+      } else {
+        console.log(`🔄 [getPipelines] Tentativa ${retryCount}/${maxRetries}...`);
       }
       
-      if (response.data.data) {
-        console.log('   - response.data.data existe?', !!response.data.data);
-        console.log('   - response.data.data é array?', Array.isArray(response.data.data));
-        console.log('   - Tamanho de response.data.data:', Array.isArray(response.data.data) ? response.data.data.length : 'N/A');
-      }
-    }
-    
-    // Usar helper para processar resposta (pode vir como string ou objeto)
-    const pipelines = parseApiResponse(response.data);
-    
-    console.log('📦 Tipo da resposta:', typeof response.data);
-    console.log(`📊 Pipelines retornadas: ${pipelines.length} item(s)`);
-    if (pipelines.length > 0) {
-      console.log('📋 Primeira pipeline:', pipelines[0]);
-    } else {
-      console.warn('⚠️ ATENÇÃO: A API retornou 0 pipelines!');
-      console.warn('   Isso pode significar:');
-      console.warn('   1. O token não tem permissão para ver pipelines');
-      console.warn('   2. Não há pipelines cadastradas para esta conta');
-      console.warn('   3. A estrutura da resposta é diferente do esperado');
-      console.warn('   📋 Teste diretamente no Swagger: https://app.nextagsai.com.br/api/swagger/');
-      console.warn('   📋 Endpoint: GET /pipelines/');
-    }
-    
-    return pipelines;
-  } catch (error) {
-    console.error('❌ Erro ao buscar pipelines:', error);
-    
-    if (error.response) {
-      console.error('📄 Resposta do erro:', {
-        status: error.response.status,
-        statusText: error.response.statusText,
-        data: error.response.data
-      });
+      const response = await api.get(endpoint);
+      console.log('✅ Resposta recebida:', response.status, response.statusText);
       
-      if (error.response.status === 401) {
+      // Log detalhado da estrutura da resposta
+      console.log('📦 Estrutura completa da resposta:');
+      console.log('   - Tipo de response.data:', typeof response.data);
+      console.log('   - É array?', Array.isArray(response.data));
+      console.log('   - Response.data completo:', JSON.stringify(response.data, null, 2).substring(0, 1000));
+      if (response.data && typeof response.data === 'object') {
+        console.log('   - Keys do objeto:', Object.keys(response.data));
+        
+        // IMPORTANTE: Se a resposta tem 'error', pode ser erro da API ou estrutura diferente
+        if (response.data.error && !response.data.data) {
+          console.error('❌ API retornou erro na resposta:', response.data.error);
+          console.error('   Mensagem completa:', JSON.stringify(response.data, null, 2));
+          // Não lançar erro imediatamente - pode ser que funcione mesmo com erro
+          console.warn('⚠️ Continuando mesmo com campo error presente...');
+        }
+        
+        if (response.data.data) {
+          console.log('   - response.data.data existe?', !!response.data.data);
+          console.log('   - response.data.data é array?', Array.isArray(response.data.data));
+          console.log('   - Tamanho de response.data.data:', Array.isArray(response.data.data) ? response.data.data.length : 'N/A');
+        }
+      }
+      
+      // Usar helper para processar resposta (pode vir como string ou objeto)
+      const pipelines = parseApiResponse(response.data);
+      
+      console.log('📦 Tipo da resposta:', typeof response.data);
+      console.log(`📊 Pipelines retornadas: ${pipelines.length} item(s)`);
+      if (pipelines.length > 0) {
+        console.log('📋 Primeira pipeline:', pipelines[0]);
+      } else {
+        console.warn('⚠️ ATENÇÃO: A API retornou 0 pipelines!');
+        console.warn('   Isso pode significar:');
+        console.warn('   1. O token não tem permissão para ver pipelines');
+        console.warn('   2. Não há pipelines cadastradas para esta conta');
+        console.warn('   3. A estrutura da resposta é diferente do esperado');
+        console.warn('   📋 Teste diretamente no Swagger: https://app.nextagsai.com.br/api/swagger/');
+        console.warn('   📋 Endpoint: GET /pipelines/');
+      }
+      
+      return pipelines;
+    } catch (error) {
+      console.error('❌ Erro ao buscar pipelines:', error);
+      
+      if (error.response) {
+        console.error('📄 Resposta do erro:', {
+          status: error.response.status,
+          statusText: error.response.statusText,
+          data: error.response.data
+        });
+        
+        // Tratar 429 (rate limit) com retry
+        if (error.response.status === 429) {
+          if (retryCount < maxRetries) {
+            retryCount++;
+            // Backoff exponencial: 60s, 90s, 120s (respeitando o limite de 100 req/min)
+            const waitTime = 60000 + (retryCount * 30000); // 60s, 90s, 120s
+            console.warn(`⚠️ Rate limit (429) na primeira requisição. Aguardando ${waitTime/1000}s antes de tentar novamente (tentativa ${retryCount}/${maxRetries})...`);
+            console.warn('   💡 O limite da API é de 100 requisições por minuto.');
+            await delay(waitTime);
+            continue; // Tentar novamente
+          } else {
+            console.error('❌ Rate limit persistente após todas as tentativas.');
+            throw error; // Lançar erro após todas as tentativas
+          }
+        }
+        
+        if (error.response.status === 401) {
         const token = import.meta.env.VITE_PIPELINES_API_TOKEN;
         const authFormat = import.meta.env.VITE_PIPELINES_AUTH_FORMAT || 'apikey';
         
@@ -258,13 +283,18 @@ export async function getPipelines(options = {}) {
           console.error('❌ Token não encontrado! Verifique o arquivo .env na raiz do projeto.');
         }
       }
-    } else if (error.code === 'ERR_NETWORK' || error.code === 'ECONNREFUSED') {
-      console.error('❌ Erro de rede - Verifique se o servidor de desenvolvimento está rodando');
-      console.error('💡 O proxy /api-nextags deve redirecionar para https://app.nextagsai.com.br/api');
+      } else if (error.code === 'ERR_NETWORK' || error.code === 'ECONNREFUSED') {
+        console.error('❌ Erro de rede - Verifique se o servidor de desenvolvimento está rodando');
+        console.error('💡 O proxy /api-nextags deve redirecionar para https://app.nextagsai.com.br/api');
+      }
+      
+      // Se não for 429 ou já tentou todas as vezes, lançar erro
+      throw error;
     }
-    
-    throw error;
   }
+  
+  // Se chegou aqui, todas as tentativas falharam
+  throw new Error('Falha ao buscar pipelines após todas as tentativas');
 }
 
 /**
