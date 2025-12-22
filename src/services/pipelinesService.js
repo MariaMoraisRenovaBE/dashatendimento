@@ -658,21 +658,41 @@ export async function getPipelinesData(options = {}) {
           console.log(`   ✅ USANDO CACHE (${Math.round(cacheAge / 1000)}s de idade, ${opportunitiesCache.length.toLocaleString('pt-BR')} oportunidades)`);
           opportunities = [...opportunitiesCache]; // Usar cópia do cache
         } else {
-          // Cache não disponível ou expirado E sem filtro (ou cache muito antigo)
+          // Cache não disponível ou expirado
           let initialLimit = null; // Sem limite por padrão (buscar tudo)
           
-          // Apenas limitar se NÃO houver filtro E for primeira carga
-          if (!hasDateFilter && isFirstLoad) {
+          // IMPORTANTE: Se há filtro de data mas não há cache, ainda usar limite inicial
+          // para não demorar muito. O filtro será aplicado no que tiver, e depois pode buscar mais
+          if (hasDateFilter && !opportunitiesCache) {
+            // Se há filtro mas não tem cache, buscar quantidade limitada primeiro para aplicar filtro rapidamente
+            initialLimit = 10000; // Buscar 10k primeiro (100 req = ~70s) para aplicar filtro rápido
+            console.log(`   🔍 FILTRO ATIVO MAS SEM CACHE: Buscando ${initialLimit.toLocaleString('pt-BR')} oportunidades primeiro para aplicar filtro`);
+            console.log(`   ⚡ O filtro será aplicado rapidamente nos ${initialLimit.toLocaleString('pt-BR')} primeiros registros`);
+            console.log(`   💡 O restante será buscado em background se necessário`);
+          } else if (!hasDateFilter && isFirstLoad) {
+            // Sem filtro e primeira carga: limitar para carregamento rápido
             initialLimit = 5000; // Limitar primeira carga a 5k (50 req = ~35s)
             console.log(`   ⚡ PRIMEIRA CARGA SEM FILTRO: Limitando a ${initialLimit.toLocaleString('pt-BR')} oportunidades para carregamento rápido`);
             console.log(`   💡 O restante será carregado em background após a primeira renderização`);
-          } else if (hasDateFilter && !opportunitiesCache) {
-            console.log(`   🔍 FILTRO ATIVO MAS SEM CACHE: Buscando dados (isso pode demorar...)`);
-            console.log(`   💡 Na próxima vez, o cache será usado e será muito mais rápido!`);
           }
           
           // Buscar dados (sem usar cache, pois não está disponível)
           opportunities = await getAllPipelineOpportunities(pipeline.id, false, initialLimit);
+          
+          // Se tem filtro e busca inicial foi limitada, buscar restante em background após aplicar filtro
+          if (hasDateFilter && initialLimit && opportunities.length >= initialLimit) {
+            console.log(`   🔄 Buscando restante das oportunidades em background para filtro completo...`);
+            setTimeout(() => {
+              getAllPipelineOpportunities(pipeline.id, false, null).then(fullOpportunities => {
+                console.log(`   ✅ Busca completa finalizada em background: ${fullOpportunities.length.toLocaleString('pt-BR')} oportunidades`);
+                // Atualizar cache com dados completos
+                opportunitiesCache = fullOpportunities;
+                cacheTimestamp = Date.now();
+              }).catch(err => {
+                console.warn(`   ⚠️ Erro ao buscar oportunidades completas em background:`, err);
+              });
+            }, 2000); // Aguardar 2s para aplicar filtro primeiro
+          }
         }
         
         // Se é primeira carga sem filtro e temos menos que o esperado, buscar o restante em background
