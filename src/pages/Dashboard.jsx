@@ -412,14 +412,13 @@ export default function Dashboard() {
               <button
                 onClick={() => {
                   console.log('📅 [Dashboard] Aplicando filtros de data:', tempDateFilters);
-                  // Sempre permitir clicar, mesmo que esteja carregando
-                  // O loading será mostrado visualmente, mas não bloqueia a ação
+                  // Sempre permitir aplicar filtros, mesmo que esteja carregando
                   setAppliedDateFilters({ ...tempDateFilters });
                 }}
                 className="px-6 py-2 bg-[#ec4899] hover:bg-[#be185d] text-white rounded-lg font-semibold transition-colors shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
-                disabled={loadingPipelines}
+                disabled={loadingPipelines && !pipelinesData}
               >
-                {loadingPipelines ? 'Filtrando...' : 'Filtrar'}
+                {loadingPipelines && !pipelinesData ? 'Carregando...' : loadingPipelines && pipelinesData ? 'Atualizando...' : 'Filtrar'}
               </button>
               <button
                 onClick={() => {

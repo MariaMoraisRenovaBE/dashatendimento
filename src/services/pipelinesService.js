@@ -673,7 +673,7 @@ export async function getPipelinesData(options = {}) {
           } else {
             console.log(`   ⏰ Cache expirado (${Math.round(cacheAge / 1000)}s). Buscando dados atualizados...`);
             // Cache expirado: buscar inicialmente uma quantidade limitada para exibir rápido
-            const INITIAL_LIMIT = 10000; // 10k registros = ~1.5-2 minutos
+            const INITIAL_LIMIT = 2000; // 2k registros = ~40-60 segundos
             console.log(`   ⚡ PRIMEIRA CARGA RÁPIDA: Limitando a ${INITIAL_LIMIT.toLocaleString('pt-BR')} oportunidades para exibir rapidamente`);
             console.log(`   💡 O restante será carregado em background`);
             
@@ -699,9 +699,9 @@ export async function getPipelinesData(options = {}) {
           }
         } else {
           // Cache não disponível: CARREGAMENTO PROGRESSIVO
-          const INITIAL_LIMIT = 10000; // 10k registros = ~1.5-2 minutos para aparecer algo
+          const INITIAL_LIMIT = 2000; // 2k registros = ~40-50 requisições = ~40-60 segundos para aparecer algo
           console.log(`   ⚡ CARREGAMENTO PROGRESSIVO:`);
-          console.log(`   📊 Primeira carga: ${INITIAL_LIMIT.toLocaleString('pt-BR')} oportunidades (~1-2 minutos)`);
+          console.log(`   📊 Primeira carga: ${INITIAL_LIMIT.toLocaleString('pt-BR')} oportunidades (~40-60 segundos)`);
           console.log(`   💡 Dashboard aparecerá com esses dados enquanto buscamos o restante em background`);
           
           // Buscar quantidade inicial para exibir rapidamente
