@@ -548,8 +548,14 @@ export async function getPipelinesData(options = {}) {
       console.log('📅 Nenhum filtro de data - buscando TODAS as oportunidades');
     }
 
+    // Função helper para adicionar delay entre requisições (evitar 429)
+    const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+    
     // 1. Buscar todas as pipelines
     let pipelines = await getPipelines();
+    
+    // Aguardar antes de próxima requisição para respeitar rate limit
+    await delay(800);
     
     // Garantir que pipelines é um array
     if (!Array.isArray(pipelines)) {
@@ -600,6 +606,9 @@ export async function getPipelinesData(options = {}) {
     let stages = [];
     try {
       stages = await getPipelineStages(pipeline.id);
+      
+      // Aguardar antes de próxima requisição para respeitar rate limit
+      await delay(800);
       if (!Array.isArray(stages)) {
         console.warn('⚠️ Stages não retornou um array, usando array vazio');
         stages = [];
