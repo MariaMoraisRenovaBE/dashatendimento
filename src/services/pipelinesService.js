@@ -1,19 +1,22 @@
 import axios from 'axios';
 
 /**
- * Cliente Axios configurado para usar o proxy /api-nextags
- * Em desenvolvimento: usa proxy do Vite
- * Em produção (Netlify): usa Netlify Function que faz proxy para a API
+ * Cliente Axios configurado
+ * Em desenvolvimento: usa proxy do Vite (/api-nextags)
+ * Em produção: chama direto o Laravel que já tem o endpoint configurado
  */
+const isDevelopment = import.meta.env.DEV;
+const LARAVEL_API_URL = 'https://phpstack-1358125-6012593.cloudwaysapps.com';
+
 const api = axios.create({
-  baseURL: '/api-nextags',
+  baseURL: isDevelopment ? '/api-nextags' : `${LARAVEL_API_URL}/api-nextags`,
   headers: {
     'Content-Type': 'application/json'
   }
 });
 
-console.log('🔧 [API Config] Base URL:', '/api-nextags');
-console.log('🔧 [API Config] Ambiente:', import.meta.env.DEV ? 'Desenvolvimento' : 'Produção');
+console.log('🔧 [API Config] Ambiente:', isDevelopment ? 'Desenvolvimento' : 'Produção');
+console.log('🔧 [API Config] Base URL:', api.defaults.baseURL);
 
 /**
  * Interceptor que adiciona o header de autenticação em todas as requisições
