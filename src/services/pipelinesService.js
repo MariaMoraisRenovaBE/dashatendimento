@@ -95,6 +95,34 @@ api.interceptors.request.use(
 );
 
 /**
+ * Helper para processar resposta da API (pode vir como string ou objeto)
+ */
+function parseApiResponse(responseData) {
+  // Se a resposta vier como string, fazer parse JSON
+  if (typeof responseData === 'string') {
+    try {
+      responseData = JSON.parse(responseData);
+    } catch (parseError) {
+      console.error('❌ Erro ao fazer parse JSON:', parseError);
+      return [];
+    }
+  }
+  
+  // Retornar data.data se existir, senão retornar data, senão retornar array vazio
+  if (Array.isArray(responseData)) {
+    return responseData;
+  } else if (Array.isArray(responseData?.data)) {
+    return responseData.data;
+  } else if (responseData?.data) {
+    // Se data existe mas não é array, tentar extrair array dos valores
+    const arrayValue = Object.values(responseData.data).find(v => Array.isArray(v));
+    return arrayValue || [];
+  }
+  
+  return [];
+}
+
+/**
  * Busca todas as pipelines
  * GET /pipelines/
  * Parâmetros opcionais: offset, limit
@@ -117,34 +145,16 @@ export async function getPipelines(options = {}) {
     
     const response = await api.get(endpoint);
     console.log('✅ Resposta recebida:', response.status, response.statusText);
-    console.log('📦 Tipo da resposta:', typeof response.data);
-    console.log('📦 É array?', Array.isArray(response.data));
-    console.log('📦 Estrutura da resposta:', {
-      hasData: !!response.data,
-      hasDataData: !!response.data?.data,
-      dataType: typeof response.data,
-      dataDataType: typeof response.data?.data,
-      isDataArray: Array.isArray(response.data),
-      isDataDataArray: Array.isArray(response.data?.data)
-    });
     
-    // Conforme a documentação: { "data": [...] }
-    // Garantir que sempre retornamos um array
-    let pipelines = null;
-    if (Array.isArray(response.data)) {
-      pipelines = response.data;
-    } else if (Array.isArray(response.data?.data)) {
-      pipelines = response.data.data;
-    } else if (response.data?.data && !Array.isArray(response.data.data)) {
-      // Se data.data existe mas não é array, pode ser um objeto com array dentro
-      console.warn('⚠️ response.data.data não é um array, tentando extrair array...');
-      pipelines = Object.values(response.data.data).find(v => Array.isArray(v)) || [];
-    } else {
-      console.warn('⚠️ Formato inesperado da resposta, retornando array vazio');
-      pipelines = [];
+    // Usar helper para processar resposta (pode vir como string ou objeto)
+    const pipelines = parseApiResponse(response.data);
+    
+    console.log('📦 Tipo da resposta:', typeof response.data);
+    console.log(`📊 Pipelines retornadas: ${pipelines.length} item(s)`);
+    if (pipelines.length > 0) {
+      console.log('📋 Primeira pipeline:', pipelines[0]);
     }
     
-    console.log(`📊 Pipelines retornadas: ${pipelines.length} item(s)`);
     return pipelines;
   } catch (error) {
     console.error('❌ Erro ao buscar pipelines:', error);
@@ -220,7 +230,7 @@ export async function getPipelineStages(pipelineId) {
   try {
   const response = await api.get(`/pipelines/${pipelineId}/stages`);
     // Conforme a documentação: { "data": [...] }
-  return response.data.data || response.data || [];
+  return parseApiResponse(response.data);
   } catch (error) {
     console.error(`❌ Erro ao buscar stages da pipeline ${pipelineId}:`, error);
     throw error;
@@ -246,17 +256,8 @@ export async function getPipelineOpportunities(pipelineId, options = {}) {
     const response = await api.get(endpoint);
     
     // Conforme a documentação: { "data": [...] }
-    // Verificar estrutura da resposta
-    let opportunities = [];
-    if (response.data) {
-      if (Array.isArray(response.data.data)) {
-        opportunities = response.data.data;
-      } else if (Array.isArray(response.data)) {
-        opportunities = response.data;
-      } else if (response.data.data && Array.isArray(response.data.data)) {
-        opportunities = response.data.data;
-      }
-    }
+    // Usar helper para processar resposta (pode vir como string ou objeto)
+    const opportunities = parseApiResponse(response.data);
     
     console.log(`   ✅ ${opportunities.length} oportunidade(s) retornada(s) (offset: ${options.offset || 0}, limit: ${options.limit || 100})`);
     if (opportunities.length === 0 && options.offset === 0) {
