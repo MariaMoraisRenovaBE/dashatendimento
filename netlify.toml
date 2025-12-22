@@ -5,7 +5,7 @@
 # Redirect para API - DEVE VIR ANTES do redirect geral
 [[redirects]]
   from = "/api-nextags/*"
-  to = "/.netlify/functions/proxy-api"
+  to = "/.netlify/functions/proxy-api/:splat"
   status = 200
   force = true
 
