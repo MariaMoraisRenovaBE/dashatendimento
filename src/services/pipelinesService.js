@@ -968,7 +968,7 @@ export async function getPipelinesData(options = {}) {
               // Adicionar delay entre requisições de tags para respeitar limite de 100 req/min
               // API NextagsAI: máximo 100 requisições por minuto
               if (i > 0) {
-                await delay(700); // 700ms = ~85 req/min (dentro do limite)
+                await delay(1000); // 1000ms = 60 req/min (margem de segurança maior)
               }
               
               // Buscar contato para obter tags
