@@ -65,23 +65,27 @@ exports.handler = async (event, context) => {
       queryParams: event.queryStringParameters
     });
     
-    // URL da API NextagsAI (chamada direta, igual ao Vite proxy em localhost)
-    // Em localhost: Vite proxy remove /api-nextags e chama diretamente https://app.nextagsai.com.br/api
-    // Em produção: Netlify Function faz o mesmo
-    const NEXTAGSAI_API_URL = 'https://app.nextagsai.com.br/api';
-    const apiUrl = `${NEXTAGSAI_API_URL}${path}`;
+    // URL do Laravel que faz proxy/autenticação para a API NextagsAI
+    // O Laravel tem o endpoint /api-nextags configurado e funcionando
+    // Endpoints funcionando no Laravel:
+    // - GET /api-nextags/pipelines
+    // - GET /api-nextags/pipelines/{id}/stages
+    // - GET /api-nextags/pipelines/{id}/opportunities
+    // - GET /api-nextags/contacts/{id}
+    const LARAVEL_API_URL = 'https://phpstack-1358125-6012593.cloudwaysapps.com';
+    const apiUrl = `${LARAVEL_API_URL}/api-nextags${path}`;
     
-    console.log('🔗 [Proxy] URL completa que será chamada:', apiUrl);
+    console.log('🔗 [Proxy] URL completa que será chamada no Laravel:', apiUrl);
     console.log('🔗 [Proxy] Path extraído:', path);
-    console.log('🔗 [Proxy] Chamando diretamente a API NextagsAI (igual ao Vite proxy em localhost)');
+    console.log('🔗 [Proxy] Laravel faz proxy para API NextagsAI');
     
-    console.log('📡 [Proxy] Requisição direta para NextagsAI (igual localhost):', {
+    console.log('📡 [Proxy] Requisição via Laravel para NextagsAI:', {
       method: event.httpMethod,
       path: event.path,
       extractedPath: path,
-      nextagsaiUrl: apiUrl,
-      usingDirectApi: true,
-      note: 'Igual ao Vite proxy em localhost'
+      laravelUrl: apiUrl,
+      usingLaravelProxy: true,
+      note: 'Laravel faz proxy para API NextagsAI'
     });
     
     // Copiar headers relevantes da requisição original
@@ -137,9 +141,9 @@ exports.handler = async (event, context) => {
       'api-key': requestHeaders['api-key'] ? requestHeaders['api-key'].substring(0, 20) + '...' : 'AUSENTE'
     });
     
-    // Fazer a requisição diretamente para a API NextagsAI
-    // IMPORTANTE: Passar os headers de autenticação que vieram do frontend
-    console.log('📤 [Proxy] Enviando requisição para NextagsAI:', {
+    // Fazer a requisição para o Laravel (que faz proxy para a API NextagsAI)
+    // O Laravel já cuida da autenticação, mas vamos passar os headers também
+    console.log('📤 [Proxy] Enviando requisição para Laravel:', {
       url: apiUrl,
       method: event.httpMethod,
       hasBody: !!event.body
@@ -157,7 +161,7 @@ exports.handler = async (event, context) => {
     let parsedData = null;
     try {
       parsedData = JSON.parse(data);
-      console.log('📥 [Proxy] Resposta da NextagsAI (parsed):', {
+      console.log('📥 [Proxy] Resposta do Laravel (parsed):', {
         status: response.status,
         statusText: response.statusText,
         contentType: response.headers.get('content-type'),
@@ -168,7 +172,7 @@ exports.handler = async (event, context) => {
       });
     } catch (e) {
       // Se não for JSON, logar como texto
-      console.log('📥 [Proxy] Resposta da NextagsAI (texto):', {
+      console.log('📥 [Proxy] Resposta do Laravel (texto):', {
         status: response.status,
         statusText: response.statusText,
         contentType: response.headers.get('content-type'),
@@ -179,7 +183,7 @@ exports.handler = async (event, context) => {
     
     // Se for erro 500, tentar parsear para ver se tem mais detalhes
     if (response.status >= 500) {
-      console.error('❌ [Proxy] Erro 5xx da NextagsAI:', {
+      console.error('❌ [Proxy] Erro 5xx do Laravel:', {
         status: response.status,
         data: data.substring(0, 500)
       });
@@ -187,8 +191,8 @@ exports.handler = async (event, context) => {
     
     // Se for 401 (não autorizado), logar detalhes
     if (response.status === 401) {
-      console.error('❌ [Proxy] Erro 401 - Não autorizado na NextagsAI');
-      console.error('   URL chamada:', apiUrl);
+      console.error('❌ [Proxy] Erro 401 - Não autorizado no Laravel');
+      console.error('   URL chamada no Laravel:', apiUrl);
       console.error('   Headers enviados:', {
         'X-API-Key': requestHeaders['X-API-Key'] ? requestHeaders['X-API-Key'].substring(0, 20) + '...' : 'AUSENTE',
         'X-ACCESS-TOKEN': requestHeaders['X-ACCESS-TOKEN'] ? requestHeaders['X-ACCESS-TOKEN'].substring(0, 20) + '...' : 'AUSENTE',
@@ -264,7 +268,7 @@ exports.handler = async (event, context) => {
         headers,
         body: JSON.stringify({ 
                 error: 'Serviço temporariamente indisponível',
-                message: 'Não foi possível conectar à API NextagsAI. Verifique se a API está acessível.',
+                message: 'Não foi possível conectar ao servidor Laravel. Verifique se o endpoint está acessível.',
           details: error.message,
           attemptedUrl: apiUrl || 'N/A'
         })
