@@ -1,11 +1,24 @@
 exports.handler = async (event, context) => {
-  // Log inicial para debug
+  // Log inicial para debug - TODOS os headers que chegam
   console.log('🚀 [Proxy] Função chamada:', {
     httpMethod: event.httpMethod,
     path: event.path,
     rawPath: event.rawPath,
     queryStringParameters: event.queryStringParameters,
     allHeaderKeys: Object.keys(event.headers),
+    // Logar TODOS os headers que contêm token, auth, api, key (case insensitive)
+    allAuthRelatedHeaders: Object.keys(event.headers)
+      .filter(key => 
+        key.toLowerCase().includes('token') || 
+        key.toLowerCase().includes('auth') || 
+        key.toLowerCase().includes('api') ||
+        key.toLowerCase().includes('key')
+      )
+      .reduce((acc, key) => {
+        acc[key] = event.headers[key].substring(0, 30) + '...';
+        return acc;
+      }, {}),
+    // Verificar variações específicas
     authHeaders: {
       'x-api-key': event.headers['x-api-key'] ? event.headers['x-api-key'].substring(0, 20) + '...' : 'AUSENTE',
       'X-API-Key': event.headers['X-API-Key'] ? event.headers['X-API-Key'].substring(0, 20) + '...' : 'AUSENTE',
