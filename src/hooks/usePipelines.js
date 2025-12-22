@@ -115,8 +115,14 @@ export function usePipelines(refreshInterval = 300000, dateFilters = {}) { // 30
   
   // Log quando os filtros mudarem
   useEffect(() => {
-    console.log('🔄 [usePipelines] Filtros de data mudaram:', dateFilters);
-  }, [dateFilters.dateFrom, dateFilters.dateTo]);
+    console.log('🔄 [usePipelines] Filtros de data mudaram:', {
+      dateFrom: dateFilters.dateFrom,
+      dateTo: dateFilters.dateTo,
+      hasDateFrom: !!dateFilters.dateFrom,
+      hasDateTo: !!dateFilters.dateTo,
+      fullObject: dateFilters
+    });
+  }, [dateFilters.dateFrom, dateFilters.dateTo, dateFilters]);
 
   return { data, loading, error };
 }
