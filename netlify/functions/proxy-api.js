@@ -18,15 +18,41 @@ exports.handler = async (event, context) => {
 
   try {
     // Extrair o path do evento
-    // event.path = /.netlify/functions/proxy-api/pipelines/
-    // queremos: /pipelines/
-    let path = event.path.replace('/.netlify/functions/proxy-api', '');
+    // Quando vem do redirect /api-nextags/* -> /.netlify/functions/proxy-api/:splat
+    // event.path pode ser: /.netlify/functions/proxy-api/pipelines/
+    // ou pode ter o path completo no event.rawPath
+    let path = event.path;
+    
+    // Remover o prefixo da função se existir
+    if (path.startsWith('/.netlify/functions/proxy-api')) {
+      path = path.replace('/.netlify/functions/proxy-api', '');
+    }
+    
+    // Se não tem path, tentar pegar do rawPath
+    if (!path || path === '/') {
+      path = event.rawPath || event.path;
+      if (path.startsWith('/.netlify/functions/proxy-api')) {
+        path = path.replace('/.netlify/functions/proxy-api', '');
+      }
+    }
+    
+    // Garantir que começa com /
+    if (!path.startsWith('/')) {
+      path = '/' + path;
+    }
     
     // Se veio query string, adicionar
     if (event.queryStringParameters && Object.keys(event.queryStringParameters).length > 0) {
       const queryString = new URLSearchParams(event.queryStringParameters).toString();
       path += `?${queryString}`;
     }
+    
+    console.log('🔍 [Proxy] Path extraído:', {
+      eventPath: event.path,
+      rawPath: event.rawPath,
+      extractedPath: path,
+      queryParams: event.queryStringParameters
+    });
     
     // URL do Laravel que faz proxy/autenticação para a API NextagsAI
     // O Laravel já tem o endpoint /api-nextags configurado e funcionando
