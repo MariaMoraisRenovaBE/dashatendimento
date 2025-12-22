@@ -394,6 +394,12 @@ export async function getAllPipelineOpportunities(pipelineId, useCache = true, m
     if (cacheAge < CACHE_DURATION) {
       console.log(`✅ Usando cache de oportunidades (${Math.round(cacheAge / 1000)}s de idade)`);
       console.log(`   📦 Total em cache: ${opportunitiesCache.length.toLocaleString('pt-BR')} oportunidades`);
+      // Se maxRecords foi especificado e cache tem mais, retornar apenas o limite solicitado
+      if (maxRecords && opportunitiesCache.length > maxRecords) {
+        console.log(`   ⚠️ Cache tem ${opportunitiesCache.length.toLocaleString('pt-BR')} registros, mas foi solicitado apenas ${maxRecords.toLocaleString('pt-BR')}. Retornando cache completo.`);
+        // Retornar cache completo mesmo se maxRecords foi especificado (cache já tem tudo)
+        return [...opportunitiesCache];
+      }
       return [...opportunitiesCache]; // Retornar cópia do cache
     } else {
       console.log(`⏰ Cache expirado (${Math.round(cacheAge / 1000)}s). Buscando dados atualizados...`);

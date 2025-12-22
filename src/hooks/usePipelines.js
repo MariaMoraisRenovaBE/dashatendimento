@@ -153,9 +153,21 @@ export function usePipelines(refreshInterval = 300000, dateFilters = {}) { // 30
 
     // Registrar callback para ser notificado quando cache for atualizado em background
     const handleCacheUpdate = () => {
-      if (isMounted && !isFetching.current) {
+      if (isMounted) {
         console.log('🔄 [usePipelines] Cache atualizado em background. Recarregando dados...');
-        load();
+        console.log('   📊 isFetching.current:', isFetching.current);
+        // Forçar atualização mesmo se estiver buscando (para atualizar com cache completo)
+        if (!isFetching.current) {
+          load();
+        } else {
+          // Se estiver buscando, aguardar um pouco e tentar novamente
+          setTimeout(() => {
+            if (isMounted && !isFetching.current) {
+              console.log('   🔄 Tentando recarregar novamente após aguardar...');
+              load();
+            }
+          }, 2000);
+        }
       }
     };
     
