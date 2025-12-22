@@ -436,14 +436,14 @@ export async function getAllPipelineOpportunities(pipelineId, useCache = true, m
       // Adicionar delay entre requisições para respeitar limite de 100 req/min
       // API NextagsAI: máximo 100 requisições por minuto
       // 100 req/min = 1 req a cada 0,6s = 600ms mínimo
-      // Usando 700ms para ter margem de segurança
+      // Usando 800ms para ter margem de segurança maior (75 req/min)
       if (hasMore) {
-        const delayBetweenRequests = 700; // 700ms = ~85 req/min (dentro do limite de 100/min)
+        const delayBetweenRequests = 800; // 800ms = ~75 req/min (margem de segurança maior)
         await delay(delayBetweenRequests);
         
         // Log apenas a cada 50 páginas para não poluir o console
         if (pageCount % 50 === 0) {
-          console.log(`   ⏳ Delay de ${delayBetweenRequests}ms aplicado (limite: 100 req/min) - página ${pageCount}`);
+          console.log(`   ⏳ Delay de ${delayBetweenRequests}ms aplicado (limite: 100 req/min, usando ~75 req/min) - página ${pageCount}`);
         }
       }
       
@@ -458,12 +458,13 @@ export async function getAllPipelineOpportunities(pipelineId, useCache = true, m
           break;
         }
         
-        // Se receber 429, aguardar 1 minuto completo para resetar o contador de rate limit
+        // Se receber 429, aguardar 1 minuto completo + 10s de margem para resetar o contador de rate limit
         // API NextagsAI: limite de 100 requisições por minuto
-        const waitTime = error.response?.status === 429 ? 60000 : 5000 * consecutiveErrors; // 60s para 429, 5s/10s/15s para outros
+        const waitTime = error.response?.status === 429 ? 70000 : 5000 * consecutiveErrors; // 70s para 429 (60s + 10s margem), 5s/10s/15s para outros
         console.warn(`⚠️ Erro ${error.response.status} ao buscar oportunidades. Aguardando ${waitTime/1000}s antes de tentar novamente...`);
         if (error.response?.status === 429) {
-          console.warn(`   💡 Rate limit (100 req/min). Aguardando 60s para resetar o contador.`);
+          console.warn(`   💡 Rate limit (100 req/min). Aguardando 70s (60s + 10s margem) para resetar o contador.`);
+          console.warn(`   💡 Já coletadas ${allOpportunities.length.toLocaleString('pt-BR')} oportunidades. Continuando após aguardar...`);
         } else {
           console.warn(`   💡 Isso ajuda a evitar rate limiting (429) da API.`);
         }
