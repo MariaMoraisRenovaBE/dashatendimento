@@ -5,7 +5,16 @@ exports.handler = async (event, context) => {
     path: event.path,
     rawPath: event.rawPath,
     queryStringParameters: event.queryStringParameters,
-    headers: Object.keys(event.headers)
+    allHeaderKeys: Object.keys(event.headers),
+    authHeaders: {
+      'x-api-key': event.headers['x-api-key'] ? event.headers['x-api-key'].substring(0, 20) + '...' : 'AUSENTE',
+      'X-API-Key': event.headers['X-API-Key'] ? event.headers['X-API-Key'].substring(0, 20) + '...' : 'AUSENTE',
+      'x-access-token': event.headers['x-access-token'] ? event.headers['x-access-token'].substring(0, 20) + '...' : 'AUSENTE',
+      'X-ACCESS-TOKEN': event.headers['X-ACCESS-TOKEN'] ? event.headers['X-ACCESS-TOKEN'].substring(0, 20) + '...' : 'AUSENTE',
+      'authorization': event.headers['authorization'] ? event.headers['authorization'].substring(0, 30) + '...' : 'AUSENTE',
+      'Authorization': event.headers['Authorization'] ? event.headers['Authorization'].substring(0, 30) + '...' : 'AUSENTE',
+      'api-key': event.headers['api-key'] ? event.headers['api-key'].substring(0, 20) + '...' : 'AUSENTE'
+    }
   });
   
   // Permitir CORS
@@ -74,18 +83,45 @@ exports.handler = async (event, context) => {
       'Content-Type': 'application/json'
     };
     
-    // Copiar headers de autenticação (IMPORTANTE: passar todos para a API NextagsAI)
-    if (event.headers['x-api-key'] || event.headers['X-API-Key']) {
-      requestHeaders['X-API-Key'] = event.headers['x-api-key'] || event.headers['X-API-Key'];
+    // IMPORTANTE: Netlify normaliza headers para lowercase
+    // Buscar headers de autenticação em todas as variações possíveis
+    const headerKeys = Object.keys(event.headers);
+    
+    // Procurar por headers de autenticação (case-insensitive)
+    for (const key of headerKeys) {
+      const lowerKey = key.toLowerCase();
+      
+      // X-API-Key ou x-api-key
+      if (lowerKey === 'x-api-key') {
+        requestHeaders['X-API-Key'] = event.headers[key];
+        console.log(`✅ [Proxy] Header X-API-Key encontrado (como '${key}'):`, event.headers[key].substring(0, 20) + '...');
+      }
+      // X-ACCESS-TOKEN ou x-access-token
+      else if (lowerKey === 'x-access-token') {
+        requestHeaders['X-ACCESS-TOKEN'] = event.headers[key];
+        console.log(`✅ [Proxy] Header X-ACCESS-TOKEN encontrado (como '${key}'):`, event.headers[key].substring(0, 20) + '...');
+      }
+      // Authorization ou authorization
+      else if (lowerKey === 'authorization') {
+        requestHeaders['Authorization'] = event.headers[key];
+        console.log(`✅ [Proxy] Header Authorization encontrado (como '${key}'):`, event.headers[key].substring(0, 30) + '...');
+      }
+      // api-key
+      else if (lowerKey === 'api-key') {
+        requestHeaders['api-key'] = event.headers[key];
+        console.log(`✅ [Proxy] Header api-key encontrado (como '${key}'):`, event.headers[key].substring(0, 20) + '...');
+      }
     }
-    if (event.headers['x-access-token'] || event.headers['X-ACCESS-TOKEN']) {
-      requestHeaders['X-ACCESS-TOKEN'] = event.headers['x-access-token'] || event.headers['X-ACCESS-TOKEN'];
-    }
-    if (event.headers['authorization'] || event.headers['Authorization']) {
-      requestHeaders['Authorization'] = event.headers['authorization'] || event.headers['Authorization'];
-    }
-    if (event.headers['api-key']) {
-      requestHeaders['api-key'] = event.headers['api-key'];
+    
+    // Se nenhum header de autenticação foi encontrado, logar aviso
+    if (!requestHeaders['X-API-Key'] && !requestHeaders['X-ACCESS-TOKEN'] && !requestHeaders['Authorization'] && !requestHeaders['api-key']) {
+      console.warn('⚠️ [Proxy] NENHUM HEADER DE AUTENTICAÇÃO ENCONTRADO!');
+      console.warn('   Headers disponíveis:', headerKeys.filter(h => 
+        h.toLowerCase().includes('token') || 
+        h.toLowerCase().includes('auth') || 
+        h.toLowerCase().includes('api') ||
+        h.toLowerCase().includes('key')
+      ));
     }
     
     console.log('🔑 [Proxy] Headers de autenticação que serão enviados:', {
@@ -125,6 +161,19 @@ exports.handler = async (event, context) => {
         status: response.status,
         data: data.substring(0, 500)
       });
+    }
+    
+    // Se for 401 (não autorizado), logar detalhes
+    if (response.status === 401) {
+      console.error('❌ [Proxy] Erro 401 - Não autorizado');
+      console.error('   URL chamada:', apiUrl);
+      console.error('   Headers enviados:', {
+        'X-API-Key': requestHeaders['X-API-Key'] ? requestHeaders['X-API-Key'].substring(0, 20) + '...' : 'AUSENTE',
+        'X-ACCESS-TOKEN': requestHeaders['X-ACCESS-TOKEN'] ? requestHeaders['X-ACCESS-TOKEN'].substring(0, 20) + '...' : 'AUSENTE',
+        'Authorization': requestHeaders['Authorization'] ? requestHeaders['Authorization'].substring(0, 30) + '...' : 'AUSENTE',
+        'api-key': requestHeaders['api-key'] ? requestHeaders['api-key'].substring(0, 20) + '...' : 'AUSENTE'
+      });
+      console.error('   Resposta da API:', data.substring(0, 500));
     }
     
     // Se for 429 (rate limit), retornar erro específico
