@@ -117,9 +117,35 @@ export async function getPipelines(options = {}) {
     
     const response = await api.get(endpoint);
     console.log('✅ Resposta recebida:', response.status, response.statusText);
+    console.log('📦 Tipo da resposta:', typeof response.data);
+    console.log('📦 É array?', Array.isArray(response.data));
+    console.log('📦 Estrutura da resposta:', {
+      hasData: !!response.data,
+      hasDataData: !!response.data?.data,
+      dataType: typeof response.data,
+      dataDataType: typeof response.data?.data,
+      isDataArray: Array.isArray(response.data),
+      isDataDataArray: Array.isArray(response.data?.data)
+    });
     
     // Conforme a documentação: { "data": [...] }
-    return response.data.data || response.data || [];
+    // Garantir que sempre retornamos um array
+    let pipelines = null;
+    if (Array.isArray(response.data)) {
+      pipelines = response.data;
+    } else if (Array.isArray(response.data?.data)) {
+      pipelines = response.data.data;
+    } else if (response.data?.data && !Array.isArray(response.data.data)) {
+      // Se data.data existe mas não é array, pode ser um objeto com array dentro
+      console.warn('⚠️ response.data.data não é um array, tentando extrair array...');
+      pipelines = Object.values(response.data.data).find(v => Array.isArray(v)) || [];
+    } else {
+      console.warn('⚠️ Formato inesperado da resposta, retornando array vazio');
+      pipelines = [];
+    }
+    
+    console.log(`📊 Pipelines retornadas: ${pipelines.length} item(s)`);
+    return pipelines;
   } catch (error) {
     console.error('❌ Erro ao buscar pipelines:', error);
     
@@ -475,7 +501,17 @@ export async function getPipelinesData(options = {}) {
     }
 
     // 1. Buscar todas as pipelines
-    const pipelines = await getPipelines();
+    let pipelines = await getPipelines();
+    
+    // Garantir que pipelines é um array
+    if (!Array.isArray(pipelines)) {
+      console.error('❌ Erro: pipelines não é um array!', {
+        tipo: typeof pipelines,
+        valor: pipelines,
+        isArray: Array.isArray(pipelines)
+      });
+      pipelines = [];
+    }
     
     if (!pipelines || pipelines.length === 0) {
       console.log('⚠️ Nenhuma pipeline encontrada');
