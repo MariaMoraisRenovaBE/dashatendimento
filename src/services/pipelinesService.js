@@ -686,6 +686,21 @@ export async function getPipelinesData(options = {}) {
           
           // Buscar dados (sem usar cache, pois não está disponível)
           opportunities = await getAllPipelineOpportunities(pipeline.id, false, initialLimit);
+          
+          // Se tem filtro e busca inicial foi limitada, buscar restante em background após aplicar filtro
+          if (hasDateFilter && initialLimit && opportunities.length >= initialLimit) {
+            console.log(`   🔄 Buscando restante das oportunidades em background para filtro completo...`);
+            setTimeout(() => {
+              getAllPipelineOpportunities(pipeline.id, false, null).then(fullOpportunities => {
+                console.log(`   ✅ Busca completa finalizada em background: ${fullOpportunities.length.toLocaleString('pt-BR')} oportunidades`);
+                // Atualizar cache com dados completos
+                opportunitiesCache = fullOpportunities;
+                cacheTimestamp = Date.now();
+              }).catch(err => {
+                console.warn(`   ⚠️ Erro ao buscar oportunidades completas em background:`, err);
+              });
+            }, 3000); // Aguardar 3s para aplicar filtro primeiro
+          }
         }
         
         // Se é primeira carga sem filtro e temos menos que o esperado, buscar o restante em background
