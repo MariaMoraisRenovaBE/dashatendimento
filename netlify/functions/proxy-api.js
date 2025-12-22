@@ -1,4 +1,13 @@
 exports.handler = async (event, context) => {
+  // Log inicial para debug
+  console.log('🚀 [Proxy] Função chamada:', {
+    httpMethod: event.httpMethod,
+    path: event.path,
+    rawPath: event.rawPath,
+    queryStringParameters: event.queryStringParameters,
+    headers: Object.keys(event.headers)
+  });
+  
   // Permitir CORS
   const headers = {
     'Access-Control-Allow-Origin': '*',
