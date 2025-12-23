@@ -768,36 +768,41 @@ export async function getPipelinesData(options = {}) {
                 }
               }, 2000); // Aguardar 2s para não interferir
             } else {
-            // Cache expirado sem filtro: buscar inicialmente uma quantidade limitada para exibir rápido
-            console.log(`   ⏰ Cache expirado (${Math.round(cacheAge / 1000)}s). Buscando dados atualizados...`);
-            const INITIAL_LIMIT = 2000; // 2k registros = ~40-60 segundos
-            console.log(`   ⚡ PRIMEIRA CARGA RÁPIDA: Limitando a ${INITIAL_LIMIT.toLocaleString('pt-BR')} oportunidades para exibir rapidamente`);
-            console.log(`   💡 O restante será carregado em background`);
-            
-            opportunities = await getAllPipelineOpportunities(pipeline.id, false, INITIAL_LIMIT);
-            
-            // Se tem mais dados para buscar, continuar em background
-            if (opportunities.length >= INITIAL_LIMIT) {
-              console.log(`   🔄 Continuando busca em background para carregar todas as oportunidades...`);
-              // Aguardar 2 minutos antes de continuar (para respeitar rate limit: 100 req/min)
-              setTimeout(async () => {
-                try {
-                  console.log(`   📡 Iniciando busca completa em background...`);
-                  const fullOpportunities = await getAllPipelineOpportunities(pipeline.id, false, null);
-                  console.log(`   ✅ Busca completa finalizada em background: ${fullOpportunities.length.toLocaleString('pt-BR')} oportunidades`);
-                  // Atualizar cache com dados completos
-                  opportunitiesCache = fullOpportunities;
-                  cacheTimestamp = Date.now();
-                  
-                  // Notificar o hook para atualizar o dashboard imediatamente
-                  if (cacheUpdateCallback) {
-                    console.log(`   🔄 Notificando hook para atualizar dashboard com ${fullOpportunities.length.toLocaleString('pt-BR')} oportunidades`);
-                    cacheUpdateCallback();
+              // Cache expirado sem filtro: buscar inicialmente uma quantidade limitada para exibir rápido
+              console.log(`   ⏰ Cache expirado (${Math.round(cacheAge / 1000)}s). Buscando dados atualizados...`);
+              const INITIAL_LIMIT = 2000; // 2k registros = ~40-60 segundos
+              console.log(`   ⚡ PRIMEIRA CARGA RÁPIDA: Limitando a ${INITIAL_LIMIT.toLocaleString('pt-BR')} oportunidades para exibir rapidamente`);
+              console.log(`   💡 O restante será carregado em background`);
+              
+              opportunities = await getAllPipelineOpportunities(pipeline.id, false, INITIAL_LIMIT);
+              
+              // Se tem mais dados para buscar, continuar em background
+              if (opportunities.length >= INITIAL_LIMIT) {
+                console.log(`   🔄 Continuando busca em background para carregar todas as oportunidades...`);
+                // Aguardar 2 minutos antes de continuar (para respeitar rate limit: 100 req/min)
+                setTimeout(async () => {
+                  try {
+                    console.log(`   📡 Iniciando busca completa em background...`);
+                    const fullOpportunities = await getAllPipelineOpportunities(pipeline.id, false, null);
+                    console.log(`   ✅ Busca completa finalizada em background: ${fullOpportunities.length.toLocaleString('pt-BR')} oportunidades`);
+                    // Atualizar cache com dados completos
+                    opportunitiesCache = fullOpportunities;
+                    cacheTimestamp = Date.now();
+                    
+                    // Notificar o hook para atualizar o dashboard imediatamente
+                    if (cacheUpdateCallback) {
+                      console.log(`   🔄 Notificando hook para atualizar dashboard com ${fullOpportunities.length.toLocaleString('pt-BR')} oportunidades`);
+                      cacheUpdateCallback();
+                    }
+                  } catch (err) {
+                    console.warn(`   ⚠️ Erro ao buscar todas as oportunidades em background:`, err);
                   }
-                } catch (err) {
-                  console.warn(`   ⚠️ Erro ao buscar todas as oportunidades em background:`, err);
-                }
-              }, 120000); // Aguardar 2 minutos (120s) para respeitar rate limit
+                }, 120000); // Aguardar 2 minutos (120s) para respeitar rate limit
+              } else {
+                // Não há mais dados, atualizar cache imediatamente
+                opportunitiesCache = opportunities;
+                cacheTimestamp = Date.now();
+              }
             }
           }
         } else {
