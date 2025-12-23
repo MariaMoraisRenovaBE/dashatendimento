@@ -61,15 +61,21 @@ export function usePipelines(refreshInterval = 300000, dateFilters = {}) { // 30
       // Marcar que está buscando
       isFetching.current = true;
       
+      // Guardar dados anteriores para fallback em caso de erro
+      const previousData = data;
+      
       try {
         // Sempre mostrar loading quando há filtros de data (para indicar que está recarregando)
+        // Mas NÃO mostrar loading se já temos dados (para não piscar a tela durante atualização em background)
         if (!data || dateFilters.dateFrom || dateFilters.dateTo) {
           setLoading(true);
         }
         
         console.log('🔄 [usePipelines] Carregando dados com filtros:', {
           dateFrom: dateFilters.dateFrom || 'não especificado',
-          dateTo: dateFilters.dateTo || 'não especificado'
+          dateTo: dateFilters.dateTo || 'não especificado',
+          hasPreviousData: !!previousData,
+          previousStagesCount: previousData?.stages?.length || 0
         });
         
         const result = await getPipelinesData(dateFilters);
@@ -78,13 +84,43 @@ export function usePipelines(refreshInterval = 300000, dateFilters = {}) { // 30
         console.log('✅ [usePipelines] Dados recebidos:', {
           totalStages: result.stages?.length || 0,
           totalTickets: result.total || 0,
-          hasComparison: result.hasComparison || false
+          hasComparison: result.hasComparison || false,
+          hasError: !!result.error
         });
         
-        // Adicionar filtros de data aos dados retornados para exibição
-        setData({ ...result, dateFrom: dateFilters.dateFrom, dateTo: dateFilters.dateTo });
-        setError(null);
-        retryCount = 0; // Reset retry count on success
+        // Proteção: se o resultado não tem stages mas temos dados anteriores E não é um filtro de data, manter dados anteriores
+        if ((!result.stages || result.stages.length === 0) && previousData && previousData.stages && previousData.stages.length > 0 && !result.error) {
+          // Pode ser atualização em background que ainda não terminou - não sobrescrever com vazio
+          if (!dateFilters.dateFrom && !dateFilters.dateTo) {
+            console.warn('⚠️ [usePipelines] Resultado sem stages mas temos dados anteriores. Mantendo dados anteriores e aguardando...');
+            setLoading(false);
+            isFetching.current = false;
+            return; // Não atualizar com dados vazios
+          }
+        }
+        
+        // Verificar se o resultado é válido antes de atualizar
+        if (result.stages && result.stages.length > 0) {
+          // Adicionar filtros de data aos dados retornados para exibição
+          setData({ ...result, dateFrom: dateFilters.dateFrom, dateTo: dateFilters.dateTo });
+          setError(null);
+          retryCount = 0; // Reset retry count on success
+        } else if (result.error) {
+          // Tem erro - atualizar mas manter dados anteriores se existirem
+          if (previousData && previousData.stages && previousData.stages.length > 0) {
+            console.warn('⚠️ [usePipelines] Erro ao atualizar, mas mantendo dados anteriores visíveis');
+            setError(result.error);
+            setLoading(false);
+          } else {
+            // Não temos dados anteriores, mostrar erro
+            setData({ ...result, dateFrom: dateFilters.dateFrom, dateTo: dateFilters.dateTo });
+            setError(result.error);
+          }
+        } else {
+          // Sem stages e sem erro - pode ser filtro que não retornou nada
+          setData({ ...result, dateFrom: dateFilters.dateFrom, dateTo: dateFilters.dateTo });
+          setError(null);
+        }
       } catch (err) {
         if (!isMounted) return;
         console.error('Erro ao carregar pipelines:', err);
