@@ -422,11 +422,14 @@ export default function Dashboard() {
               </button>
               <button
                 onClick={() => {
-                  console.log('📅 [Dashboard] Limpando filtros de data');
+                  console.log('📅 [Dashboard] Limpando filtros de data (mantendo dados)');
                   setTempDateFilters({ dateFrom: '', dateTo: '' });
+                  // Limpar apenas os filtros - o hook vai detectar mudança e recarregar sem filtro
+                  // Mas vai usar cache se disponível
                   setAppliedDateFilters({ dateFrom: '', dateTo: '' });
                 }}
                 className="px-6 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-semibold transition-colors"
+                disabled={loadingPipelines && !pipelinesData}
               >
                 Limpar
               </button>

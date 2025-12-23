@@ -109,7 +109,12 @@ export function usePipelines(refreshInterval = 300000, dateFilters = {}) { // 30
           // Tem erro - atualizar mas manter dados anteriores se existirem
           if (previousData && previousData.stages && previousData.stages.length > 0) {
             console.warn('⚠️ [usePipelines] Erro ao atualizar, mas mantendo dados anteriores visíveis');
-            setError(result.error);
+            // Aplicar filtro vazio aos dados anteriores (limpar filtro mas manter dados)
+            if (!dateFilters.dateFrom && !dateFilters.dateTo) {
+              setData({ ...previousData, dateFrom: '', dateTo: '', hasDateFilter: false });
+            } else {
+              setError(result.error);
+            }
             setLoading(false);
           } else {
             // Não temos dados anteriores, mostrar erro
@@ -118,8 +123,15 @@ export function usePipelines(refreshInterval = 300000, dateFilters = {}) { // 30
           }
         } else {
           // Sem stages e sem erro - pode ser filtro que não retornou nada
-          setData({ ...result, dateFrom: dateFilters.dateFrom, dateTo: dateFilters.dateTo });
-          setError(null);
+          // Se estamos limpando filtro e não tem stages, manter dados anteriores
+          if (!dateFilters.dateFrom && !dateFilters.dateTo && previousData && previousData.stages && previousData.stages.length > 0) {
+            console.warn('⚠️ [usePipelines] Limpando filtro mas resultado sem stages. Mantendo dados anteriores sem filtro.');
+            setData({ ...previousData, dateFrom: '', dateTo: '', hasDateFilter: false });
+            setError(null);
+          } else {
+            setData({ ...result, dateFrom: dateFilters.dateFrom, dateTo: dateFilters.dateTo });
+            setError(null);
+          }
         }
       } catch (err) {
         if (!isMounted) return;
