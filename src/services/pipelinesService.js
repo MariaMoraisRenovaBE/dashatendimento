@@ -486,17 +486,16 @@ export async function getAllPipelineOpportunities(pipelineId, useCache = true, m
       }
       
       // Adicionar delay entre requisições para respeitar limite de 100 req/min
-      // API NextagsAI: máximo 100 requisições por minuto
+      // API NextagsAI: máximo 100 requisições por minuto (confirmado pela NexTags)
       // 100 req/min = 1 req a cada 0,6s = 600ms mínimo
-      // Usando 1000ms (1s) para ter margem de segurança muito maior (60 req/min)
-      // Isso garante que nunca ultrapassaremos o limite mesmo com outras requisições simultâneas
+      // Usando 700ms para ter margem de segurança e ainda usar ~85 req/min (mais eficiente)
       if (hasMore) {
-        const delayBetweenRequests = 1000; // 1000ms = 60 req/min (margem de segurança muito maior)
+        const delayBetweenRequests = 700; // 700ms = ~85 req/min (dentro do limite, com margem de segurança)
         await delay(delayBetweenRequests);
         
         // Log apenas a cada 50 páginas para não poluir o console
         if (pageCount % 50 === 0) {
-          console.log(`   ⏳ Delay de ${delayBetweenRequests}ms aplicado (limite: 100 req/min, usando ~75 req/min) - página ${pageCount}`);
+          console.log(`   ⏳ Delay de ${delayBetweenRequests}ms aplicado (limite: 100 req/min, usando ~85 req/min) - página ${pageCount}`);
         }
       }
       
