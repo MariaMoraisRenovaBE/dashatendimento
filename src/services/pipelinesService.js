@@ -686,15 +686,39 @@ export async function getPipelinesData(options = {}) {
       const hasDateFilter = options.dateFrom || options.dateTo;
       
       try {
-        // ESTRATÉGIA: usar cache se disponível, senão carregar progressivamente
+        // ESTRATÉGIA: SEMPRE priorizar cache quando há filtro (mesmo expirado) para filtragem instantânea
+        // Se não há filtro ou cache, buscar progressivamente
         if (opportunitiesCache && cacheTimestamp) {
           const cacheAge = Date.now() - cacheTimestamp;
           if (cacheAge < CACHE_DURATION) {
             console.log(`   ✅ USANDO CACHE VÁLIDO (${Math.round(cacheAge / 1000)}s de idade, ${opportunitiesCache.length.toLocaleString('pt-BR')} oportunidades)`);
             opportunities = [...opportunitiesCache];
+          } else if (hasDateFilter) {
+            // FILTRO ATIVO: usar cache mesmo expirado para filtragem instantânea
+            console.log(`   ✅ USANDO CACHE EXPIRADO COM FILTRO (${Math.round(cacheAge / 1000)}s de idade, ${opportunitiesCache.length.toLocaleString('pt-BR')} oportunidades)`);
+            console.log(`   💡 Filtro será aplicado instantaneamente no cliente. Cache será atualizado em background.`);
+            opportunities = [...opportunitiesCache];
+            
+            // Atualizar cache em background sem bloquear o filtro
+            setTimeout(async () => {
+              try {
+                console.log(`   🔄 Atualizando cache em background (sem bloquear filtro)...`);
+                const fullOpportunities = await getAllPipelineOpportunities(pipeline.id, false, null);
+                console.log(`   ✅ Cache atualizado em background: ${fullOpportunities.length.toLocaleString('pt-BR')} oportunidades`);
+                opportunitiesCache = fullOpportunities;
+                cacheTimestamp = Date.now();
+                
+                // Notificar hook para atualizar com dados completos
+                if (cacheUpdateCallback) {
+                  cacheUpdateCallback();
+                }
+              } catch (err) {
+                console.warn(`   ⚠️ Erro ao atualizar cache em background:`, err);
+              }
+            }, 1000); // Aguardar 1s para não interferir com o filtro
           } else {
+            // Cache expirado sem filtro: buscar inicialmente uma quantidade limitada para exibir rápido
             console.log(`   ⏰ Cache expirado (${Math.round(cacheAge / 1000)}s). Buscando dados atualizados...`);
-            // Cache expirado: buscar inicialmente uma quantidade limitada para exibir rápido
             const INITIAL_LIMIT = 2000; // 2k registros = ~40-60 segundos
             console.log(`   ⚡ PRIMEIRA CARGA RÁPIDA: Limitando a ${INITIAL_LIMIT.toLocaleString('pt-BR')} oportunidades para exibir rapidamente`);
             console.log(`   💡 O restante será carregado em background`);
