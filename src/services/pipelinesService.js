@@ -505,17 +505,43 @@ export async function getAllPipelineOpportunities(pipelineId, useCache = true, m
       
       // Se receber 429 ou 500, aguardar e tentar novamente
       if (error.response?.status === 429 || error.response?.status === 500) {
+        // Se é a primeira requisição (sem dados coletados), aguardar mais tempo
+        const isFirstRequest = allOpportunities.length === 0 && pageCount === 1;
+        
         if (consecutiveErrors >= maxConsecutiveErrors) {
+          // Se não coletou nada, não retornar vazio - tentar usar cache se disponível
+          if (allOpportunities.length === 0) {
+            if (opportunitiesCache && cacheTimestamp) {
+              const cacheAge = Date.now() - cacheTimestamp;
+              console.warn(`⚠️ Muitos erros consecutivos (${error.response.status}) na primeira requisição.`);
+              console.warn(`   💡 Usando cache existente (${Math.round(cacheAge / 1000)}s de idade, ${opportunitiesCache.length.toLocaleString('pt-BR')} oportunidades)`);
+              return [...opportunitiesCache];
+            }
+            console.warn(`⚠️ Muitos erros consecutivos (${error.response.status}). Nenhuma oportunidade coletada.`);
+            console.warn(`   💡 Rate limit pode estar esgotado. Tente novamente em alguns minutos.`);
+            throw new Error(`Rate limit atingido. Nenhuma oportunidade foi coletada. Aguarde alguns minutos e tente novamente.`);
+          }
           console.warn(`⚠️ Muitos erros consecutivos (${error.response.status}). Retornando ${allOpportunities.length} oportunidades já coletadas.`);
           break;
         }
         
-        // Se receber 429, aguardar 1 minuto completo + 10s de margem para resetar o contador de rate limit
+        // Se receber 429, aguardar mais tempo na primeira requisição (pode estar esgotado)
         // API NextagsAI: limite de 100 requisições por minuto
-        const waitTime = error.response?.status === 429 ? 70000 : 5000 * consecutiveErrors; // 70s para 429 (60s + 10s margem), 5s/10s/15s para outros
+        let waitTime;
+        if (error.response?.status === 429) {
+          // Primeira requisição com 429 = rate limit já esgotado, aguardar mais
+          waitTime = isFirstRequest ? 90000 : 70000; // 90s se primeira, 70s caso contrário
+        } else {
+          waitTime = 5000 * consecutiveErrors; // 5s/10s/15s para outros
+        }
+        
         console.warn(`⚠️ Erro ${error.response.status} ao buscar oportunidades. Aguardando ${waitTime/1000}s antes de tentar novamente...`);
         if (error.response?.status === 429) {
-          console.warn(`   💡 Rate limit (100 req/min). Aguardando 70s (60s + 10s margem) para resetar o contador.`);
+          if (isFirstRequest) {
+            console.warn(`   💡 Rate limit esgotado na primeira requisição. Aguardando 90s para resetar completamente.`);
+          } else {
+            console.warn(`   💡 Rate limit (100 req/min). Aguardando 70s (60s + 10s margem) para resetar o contador.`);
+          }
           console.warn(`   💡 Já coletadas ${allOpportunities.length.toLocaleString('pt-BR')} oportunidades. Continuando após aguardar...`);
         } else {
           console.warn(`   💡 Isso ajuda a evitar rate limiting (429) da API.`);
